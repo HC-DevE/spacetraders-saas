@@ -1,38 +1,31 @@
 <script setup lang="ts">
 import { computed, nextTick, ref, watch } from 'vue'
-import { onBeforeRouteLeave, useRouter } from 'vue-router'
+import { useRouter } from 'vue-router'
+import { z } from 'zod'
 
+import { ApiError } from '@/shared/api/api-error'
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 
-import { useAuthStore } from '../auth.store'
 import { useLogin } from '../composables/use-login'
 
 const router = useRouter()
-const auth = useAuthStore()
+
+const tokenSchema = z.string().trim().min(1, 'Enter your agent token.')
 
 const token = ref('')
 const showToken = ref(false)
+const fieldError = ref('')
 
-const { isPending, fieldError, error, login, cancelLogin, clearErrors } = useLogin()
+const { isPending, error, login, reset } = useLogin()
 
-const sessionNotice = computed(() => {
-  if (auth.endReason === 'token-rejected') {
-    return 'Your previous token is no longer accepted. Connect again with a valid agent token.'
-  }
-
-  if (auth.endReason === 'storage-error') {
-    return 'You are signed out of this page, but the saved token could not be removed. Clear this site’s stored data before reloading.'
-  }
-
-  return ''
-})
-
-const tokenIsInvalid = computed(
-  () => Boolean(fieldError.value) || error.value?.kind === 'authentication',
+const isAuthenticationError = computed(
+  () => error.value instanceof ApiError && error.value.kind === 'authentication',
 )
+
+const tokenIsInvalid = computed(() => Boolean(fieldError.value) || isAuthenticationError.value)
 
 const tokenDescription = computed(() => {
   const ids = ['token-help']
@@ -41,28 +34,38 @@ const tokenDescription = computed(() => {
     ids.push('token-field-error')
   }
 
-  if (error.value?.kind === 'authentication') {
+  if (isAuthenticationError.value) {
     ids.push('login-error')
   }
 
   return ids.join(' ')
 })
 
-watch(token, clearErrors)
+watch(token, () => {
+  fieldError.value = ''
 
-onBeforeRouteLeave(() => {
-  cancelLogin()
+  if (!isPending.value) reset()
 })
 
 async function submit() {
-  const connected = await login(token.value)
+  if (isPending.value) return
 
-  if (!connected) {
-    if (fieldError.value) {
-      await nextTick()
-      document.getElementById('agent-token')?.focus()
-    }
+  fieldError.value = ''
+  reset()
 
+  const result = tokenSchema.safeParse(token.value)
+
+  if (!result.success) {
+    fieldError.value = result.error.issues[0]?.message ?? 'Enter a valid token.'
+    await nextTick()
+    document.getElementById('agent-token')?.focus()
+    return
+  }
+
+  try {
+    await login(result.data)
+  } catch {
+    // The mutation exposes the error to the template.
     return
   }
 
@@ -112,14 +115,6 @@ async function submit() {
           <p class="mt-2 leading-6 text-muted-foreground">
             Use an agent token from your SpaceTraders account.
           </p>
-        </div>
-
-        <div
-          v-if="sessionNotice"
-          role="alert"
-          class="rounded-lg border border-warning/30 bg-warning-subtle p-4 text-sm text-warning"
-        >
-          {{ sessionNotice }}
         </div>
 
         <form class="space-y-5" novalidate :aria-busy="isPending" @submit.prevent="submit">
@@ -190,7 +185,7 @@ async function submit() {
 
         <div class="space-y-3 border-t pt-5 text-sm text-muted-foreground">
           <p>
-            Your token is saved in this tab’s session storage so you can reload the page. Sign out
+            Your token is saved in this browser so you can return without signing in again. Sign out
             to remove it.
           </p>
 

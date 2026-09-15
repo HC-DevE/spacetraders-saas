@@ -12,7 +12,7 @@ let auth: AuthStore
 let queryClient: QueryClient
 
 beforeEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   auth = useAuthStore(createPinia())
   queryClient = createQueryClient(auth)
 })
@@ -20,142 +20,93 @@ beforeEach(() => {
 afterEach(() => {
   queryClient.clear()
   vi.restoreAllMocks()
-  sessionStorage.clear()
+  localStorage.clear()
 })
 
-describe('Session management', () => {
-  it('persists the token and renews the identity on login and logout', () => {
-    const initialSessionId = auth.sessionId
-    const connectedSessionId = auth.establishSession('first-token')
+describe('Token storage and authentication errors', () => {
+  it('persists and removes the token', () => {
+    auth.setToken('saved-token')
 
-    expect(connectedSessionId).not.toBe(initialSessionId)
-    expect(auth.token).toBe('first-token')
-    expect(sessionStorage.getItem(storageKey)).toBe('first-token')
+    expect(auth.hasToken).toBe(true)
+    expect(localStorage.getItem(storageKey)).toBe('saved-token')
 
-    auth.endSession()
+    auth.clearToken()
 
-    expect(auth.hasToken).toBe(false)
     expect(auth.token).toBeNull()
-    expect(auth.sessionId).not.toBe(connectedSessionId)
-    expect(auth.endReason).toBe('logout')
-    expect(sessionStorage.getItem(storageKey)).toBeNull()
+    expect(auth.hasToken).toBe(false)
+    expect(localStorage.getItem(storageKey)).toBeNull()
   })
 
-  it('restores a saved token with a new local session identity', () => {
-    auth.establishSession('saved-token')
+  it('restores the token when a new application instance starts', () => {
+    auth.setToken('saved-token')
 
     const restoredAuth = useAuthStore(createPinia())
 
     expect(restoredAuth.token).toBe('saved-token')
     expect(restoredAuth.hasToken).toBe(true)
-    expect(restoredAuth.sessionId).not.toBe(auth.sessionId)
   })
 
-  it('renews the identity even when ending an unauthenticated session', () => {
-    const previousSessionId = auth.sessionId
+  it('starts without a token when reading storage fails', () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('Storage blocked', 'SecurityError')
+    })
 
-    auth.endSession()
-
-    expect(auth.token).toBeNull()
-    expect(auth.sessionId).not.toBe(previousSessionId)
+    expect(useAuthStore(createPinia()).hasToken).toBe(false)
   })
 
-  it('does not establish a session when storage refuses the token', () => {
-    const previousSessionId = auth.sessionId
-
+  it('does not authenticate when the token cannot be saved', () => {
     vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
       throw new DOMException('Storage blocked', 'SecurityError')
     })
 
-    expect(auth.establishSession('candidate-token')).toBeNull()
+    expect(() => auth.setToken('candidate-token')).toThrow('could not save the token')
     expect(auth.hasToken).toBe(false)
-    expect(auth.sessionId).toBe(previousSessionId)
   })
 
-  it('clears the local session even when storage removal fails', () => {
-    auth.establishSession('saved-token')
+  it('clears the in-memory token even if storage removal fails', () => {
+    auth.setToken('saved-token')
 
     vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
       throw new DOMException('Storage blocked', 'SecurityError')
     })
 
-    auth.endSession()
-
-    expect(auth.token).toBeNull()
-    expect(auth.endReason).toBe('storage-error')
+    expect(() => auth.clearToken()).toThrow('Storage blocked')
+    expect(auth.hasToken).toBe(false)
   })
 
-  it('clears the session and cache when the current token is rejected', async () => {
-    const sessionId = auth.establishSession('rejected-token')
+  it('clears the token and all queries after an authentication error', async () => {
+    auth.setToken('rejected-token')
 
-    queryClient.setQueryData(['session', sessionId, 'fleet'], { ships: ['TEST-1'] })
+    queryClient.setQueryData(['ships', 'detail', 'TEST-1'], { symbol: 'TEST-1' })
 
     await expect(
       queryClient.fetchQuery({
-        queryKey: ['session', sessionId, 'agent'],
-        queryFn: () =>
-          Promise.reject(
-            new ApiError('authentication', 'Token rejected.', {
-              status: 401,
-            }),
-          ),
+        queryKey: ['agent', 'current'],
+        queryFn: () => Promise.reject(new ApiError('authentication', 'Token rejected.')),
       }),
-    ).rejects.toMatchObject({
-      kind: 'authentication',
-    })
+    ).rejects.toMatchObject({ kind: 'authentication' })
 
     expect(auth.hasToken).toBe(false)
-    expect(auth.endReason).toBe('token-rejected')
-    expect(sessionStorage.getItem(storageKey)).toBeNull()
+    expect(localStorage.getItem(storageKey)).toBeNull()
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
   })
 
-  it('does not end a new session because an older request fails', async () => {
-    const oldSessionId = auth.establishSession('old-token')
-    const currentSessionId = auth.establishSession('current-token')
-    const currentAgentKey = ['session', currentSessionId, 'agent'] as const
-
-    queryClient.setQueryData(currentAgentKey, { symbol: 'CURRENT' })
-
-    await expect(
-      queryClient.fetchQuery({
-        queryKey: ['session', oldSessionId, 'agent'],
-        queryFn: () =>
-          Promise.reject(
-            new ApiError('authentication', 'Old token rejected.', {
-              status: 401,
-            }),
-          ),
-      }),
-    ).rejects.toMatchObject({
-      kind: 'authentication',
-    })
-
-    expect(auth.sessionId).toBe(currentSessionId)
-    expect(auth.token).toBe('current-token')
-    expect(queryClient.getQueryData(currentAgentKey)).toEqual({
-      symbol: 'CURRENT',
-    })
-  })
-
-  it('keeps the session when an action is forbidden', async () => {
-    const sessionId = auth.establishSession('valid-token')
+  it.each([
+    new ApiError('request', 'Permission denied.', { status: 403 }),
+    new ApiError('rate-limit', 'Too many requests.', { status: 429 }),
+    new ApiError('network', 'Connection unavailable.'),
+  ])('keeps the token after $kind errors', async (error) => {
+    auth.setToken('valid-token')
 
     await expect(
       queryClient.fetchQuery({
-        queryKey: ['session', sessionId, 'restricted-resource'],
-        queryFn: () =>
-          Promise.reject(
-            new ApiError('request', 'Permission denied.', {
-              status: 403,
-            }),
-          ),
+        queryKey: ['agent', 'current'],
+        queryFn: () => Promise.reject(error),
+        retry: false,
       }),
-    ).rejects.toMatchObject({
-      status: 403,
-    })
+    ).rejects.toBe(error)
 
-    expect(auth.sessionId).toBe(sessionId)
-    expect(auth.hasToken).toBe(true)
+    expect(auth.token).toBe('valid-token')
+    expect(localStorage.getItem(storageKey)).toBe('valid-token')
   })
 })

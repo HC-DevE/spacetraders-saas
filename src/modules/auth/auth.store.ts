@@ -3,63 +3,37 @@ import { computed, ref } from 'vue'
 
 const TOKEN_STORAGE_KEY = 'space-control.agent-token'
 
-type SessionEndReason = 'logout' | 'token-rejected' | 'storage-error'
-
-function readStoredToken(): string | null {
+function readToken(): string | null {
   try {
-    return sessionStorage.getItem(TOKEN_STORAGE_KEY)?.trim() || null
+    return localStorage.getItem(TOKEN_STORAGE_KEY)?.trim() || null
   } catch {
     return null
   }
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string | null>(readStoredToken())
-  const sessionId = ref(crypto.randomUUID())
-  const endReason = ref<SessionEndReason | null>(null)
-
+  const token = ref<string | null>(readToken())
   const hasToken = computed(() => Boolean(token.value))
 
-  function establishSession(validatedToken: string): string | null {
-    const normalizedToken = validatedToken.trim()
-
-    if (!normalizedToken) {
-      throw new Error('Cannot establish a session without a token.')
-    }
-
+  function setToken(value: string) {
     try {
-      sessionStorage.setItem(TOKEN_STORAGE_KEY, normalizedToken)
+      localStorage.setItem(TOKEN_STORAGE_KEY, value)
     } catch {
-      return null
+      throw new Error('Your browser could not save the token. Allow site storage and try again.')
     }
 
-    sessionId.value = crypto.randomUUID()
-    token.value = normalizedToken
-    endReason.value = null
-
-    return sessionId.value
+    token.value = value
   }
 
-  function endSession(reason: SessionEndReason = 'logout') {
-    token.value = null
-    sessionId.value = crypto.randomUUID()
-    endReason.value = reason
-
+  function clearToken() {
     try {
-      sessionStorage.removeItem(TOKEN_STORAGE_KEY)
-    } catch {
-      endReason.value = 'storage-error'
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+    } finally {
+      token.value = null
     }
   }
 
-  return {
-    token,
-    sessionId,
-    hasToken,
-    endReason,
-    establishSession,
-    endSession,
-  }
+  return { token, hasToken, setToken, clearToken }
 })
 
 export type AuthStore = ReturnType<typeof useAuthStore>

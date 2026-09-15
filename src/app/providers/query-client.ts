@@ -6,19 +6,18 @@ import { ApiError } from '@/shared/api/api-error'
 export function createQueryClient(auth: AuthStore): QueryClient {
   const queryClient: QueryClient = new QueryClient({
     queryCache: new QueryCache({
-      onError: (error, query) => {
+      onError: (error) => {
         if (!(error instanceof ApiError) || error.kind !== 'authentication') {
           return
         }
 
-        const [scope, requestSessionId] = query.queryKey
+        if (!auth.hasToken) return
 
-        if (!auth.hasToken || scope !== 'session' || requestSessionId !== auth.sessionId) {
-          return
+        try {
+          auth.clearToken()
+        } finally {
+          queryClient.clear()
         }
-
-        auth.endSession('token-rejected')
-        queryClient.clear()
       },
     }),
 

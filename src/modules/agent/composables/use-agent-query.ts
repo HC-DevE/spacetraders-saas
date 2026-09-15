@@ -7,7 +7,7 @@ import { ApiError } from '@/shared/api/api-error'
 import { getAgent } from '../api/agent.api'
 
 export const agentKeys = {
-  current: (sessionId: string) => ['session', sessionId, 'agent', 'current'] as const,
+  current: () => ['agent', 'current'] as const,
 }
 
 export function useAgentQuery() {
@@ -16,11 +16,9 @@ export function useAgentQuery() {
   return useQuery(
     computed(() => {
       const token = auth.token
-      const sessionId = auth.sessionId
 
       return {
-        queryKey: agentKeys.current(sessionId),
-
+        queryKey: agentKeys.current(),
         enabled: Boolean(token),
 
         queryFn: ({ signal }: { signal: AbortSignal }) => {

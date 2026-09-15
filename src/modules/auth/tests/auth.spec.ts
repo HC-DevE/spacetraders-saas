@@ -34,7 +34,7 @@ beforeAll(() => {
 })
 
 beforeEach(() => {
-  sessionStorage.clear()
+  localStorage.clear()
   requestCount = 0
 
   server.use(
@@ -51,7 +51,7 @@ afterEach(() => {
   server.resetHandlers()
   vi.restoreAllMocks()
   onlineManager.setOnline(true)
-  sessionStorage.clear()
+  localStorage.clear()
 })
 
 afterAll(() => {
@@ -114,7 +114,9 @@ describe('Authentication flow', () => {
   it('connects with one request and removes the saved token on logout', async () => {
     const { wrapper, auth, queryClient, router } = await mountApplication()
 
-    await wrapper.get('#agent-token').setValue('test-agent-token')
+    queryClient.setQueryData(['ships', 'detail', 'OLD-1'], { symbol: 'OLD-1' })
+
+    await wrapper.get('#agent-token').setValue('  test-agent-token  ')
     await wrapper.get('form').trigger('submit')
 
     await vi.waitFor(() => {
@@ -125,8 +127,9 @@ describe('Authentication flow', () => {
 
     expect(wrapper.text()).toContain('TEST')
     expect(requestCount).toBe(1)
-    expect(sessionStorage.getItem(storageKey)).toBe('test-agent-token')
-    expect(queryClient.getQueryData(agentKeys.current(auth.sessionId))).toEqual(agent)
+    expect(localStorage.getItem(storageKey)).toBe('test-agent-token')
+    expect(queryClient.getQueryData(agentKeys.current())).toEqual(agent)
+    expect(queryClient.getQueryData(['ships', 'detail', 'OLD-1'])).toBeUndefined()
 
     await wrapper.get('[data-testid="logout"]').trigger('click')
 
@@ -135,7 +138,7 @@ describe('Authentication flow', () => {
     })
 
     expect(auth.token).toBeNull()
-    expect(sessionStorage.getItem(storageKey)).toBeNull()
+    expect(localStorage.getItem(storageKey)).toBeNull()
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
   })
 
@@ -152,7 +155,7 @@ describe('Authentication flow', () => {
     })
 
     expect(auth.hasToken).toBe(false)
-    expect(sessionStorage.getItem(storageKey)).toBeNull()
+    expect(localStorage.getItem(storageKey)).toBeNull()
     expect(router.currentRoute.value.name).toBe('login')
   })
 
@@ -182,7 +185,7 @@ describe('Authentication flow', () => {
       expect(router.currentRoute.value.name).toBe('agent-overview')
     })
 
-    expect(sessionStorage.getItem(storageKey)).toBe('valid-token')
+    expect(localStorage.getItem(storageKey)).toBe('valid-token')
   })
 
   it('reports a storage failure without opening a session or caching the agent', async () => {
@@ -196,12 +199,12 @@ describe('Authentication flow', () => {
     await wrapper.get('form').trigger('submit')
 
     await vi.waitFor(() => {
-      expect(wrapper.get('#login-error').text()).toContain('could not save the session')
+      expect(wrapper.get('#login-error').text()).toContain('could not save the token')
     })
 
     expect(wrapper.get<HTMLButtonElement>('button[type="submit"]').element.disabled).toBe(false)
     expect(auth.hasToken).toBe(false)
-    expect(sessionStorage.getItem(storageKey)).toBeNull()
+    expect(localStorage.getItem(storageKey)).toBeNull()
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
     expect(router.currentRoute.value.name).toBe('login')
   })
@@ -236,7 +239,7 @@ describe('Authentication flow', () => {
   })
 
   it('restores a token and fetches fresh agent information', async () => {
-    sessionStorage.setItem(storageKey, 'saved-token')
+    localStorage.setItem(storageKey, 'saved-token')
 
     const { wrapper, auth, router } = await mountApplication('/')
 
@@ -250,7 +253,7 @@ describe('Authentication flow', () => {
   })
 
   it('removes a restored token if the API rejects it', async () => {
-    sessionStorage.setItem(storageKey, 'expired-token')
+    localStorage.setItem(storageKey, 'expired-token')
     rejectToken()
 
     const { auth, queryClient, router } = await mountApplication('/')
@@ -260,8 +263,7 @@ describe('Authentication flow', () => {
     })
 
     expect(auth.hasToken).toBe(false)
-    expect(auth.endReason).toBe('token-rejected')
-    expect(sessionStorage.getItem(storageKey)).toBeNull()
+    expect(localStorage.getItem(storageKey)).toBeNull()
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
   })
 
@@ -279,7 +281,7 @@ describe('Authentication flow', () => {
     rejectToken()
 
     await queryClient.invalidateQueries({
-      queryKey: agentKeys.current(auth.sessionId),
+      queryKey: agentKeys.current(),
     })
 
     await vi.waitFor(() => {
@@ -287,48 +289,10 @@ describe('Authentication flow', () => {
     })
 
     expect(auth.hasToken).toBe(false)
-    expect(sessionStorage.getItem(storageKey)).toBeNull()
+    expect(localStorage.getItem(storageKey)).toBeNull()
   })
 
-  it('does not connect after leaving the login page during a request', async () => {
-    let releaseResponse: (() => void) | undefined
-
-    const responseGate = new Promise<void>((resolve) => {
-      releaseResponse = resolve
-    })
-
-    server.use(
-      http.get(endpoint, async () => {
-        requestCount += 1
-        await responseGate
-        return HttpResponse.json({ data: agent })
-      }),
-    )
-
-    const { wrapper, auth, queryClient, router } = await mountApplication()
-
-    try {
-      await wrapper.get('#agent-token').setValue('valid-token')
-      await wrapper.get('form').trigger('submit')
-
-      await vi.waitFor(() => {
-        expect(requestCount).toBe(1)
-      })
-
-      await router.push('/missing-page')
-      releaseResponse?.()
-      await flushPromises()
-
-      expect(router.currentRoute.value.name).toBe('not-found')
-      expect(auth.hasToken).toBe(false)
-      expect(sessionStorage.getItem(storageKey)).toBeNull()
-      expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
-    } finally {
-      releaseResponse?.()
-    }
-  })
-
-  it('prevents duplicate submissions and ignores a cancelled login', async () => {
+  it('prevents duplicate submissions while login is pending', async () => {
     let releaseResponse: (() => void) | undefined
 
     const responseGate = new Promise<void>((resolve) => {
@@ -344,7 +308,7 @@ describe('Authentication flow', () => {
       }),
     )
 
-    const { wrapper, auth, queryClient, router } = await mountApplication()
+    const { wrapper, auth, router } = await mountApplication()
 
     const submitButton = wrapper.get<HTMLButtonElement>('button[type="submit"]')
 
@@ -359,20 +323,15 @@ describe('Authentication flow', () => {
 
       expect(submitButton.element.disabled).toBe(true)
 
-      auth.endSession()
-      queryClient.clear()
       releaseResponse?.()
 
       await vi.waitFor(() => {
-        expect(submitButton.element.disabled).toBe(false)
+        expect(router.currentRoute.value.name).toBe('agent-overview')
       })
 
-      await flushPromises()
-
-      expect(auth.hasToken).toBe(false)
-      expect(sessionStorage.getItem(storageKey)).toBeNull()
-      expect(router.currentRoute.value.name).toBe('login')
-      expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
+      expect(auth.hasToken).toBe(true)
+      expect(localStorage.getItem(storageKey)).toBe('test-agent-token')
+      expect(requestCount).toBe(1)
     } finally {
       releaseResponse?.()
     }
