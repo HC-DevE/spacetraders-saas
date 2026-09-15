@@ -1,42 +1,59 @@
 name: CI
 
 on:
-    push:
-    pull_request:
-    workflow_dispatch:
+  push:
+  pull_request:
+  workflow_dispatch:
 
 permissions:
-    contents: read
+  contents: read
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    quality:
-        name: Quality and build
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
+  quality:
+    name: Quality, build and E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
 
-        steps:
-            - name: Checkout repository
-              uses: actions/checkout@v6
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v6
-              with:
-                  node-version: "24.14.0"
-                  package-manager-cache: false
+      - name: Setup pnpm and Node.js
+        uses: pnpm/setup@v1
+        with:
+          version: '12.4.1'
+          runtime: 'node@24.14.0'
+          install: false
+          cache: true
 
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v6
-              with:
-                  version: "12.4.1"
-                  run_install: false
-                  cache: true
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-            - name: Install dependencies
-              run: pnpm install --frozen-lockfile
+      - name: Run quality checks and build
+        run: pnpm check
 
-            - name: Run quality checks
-              run: pnpm check
+      - name: Check E2E sources
+        run: |
+          pnpm exec prettier --check playwright.config.ts e2e/
+          pnpm exec tsc --project e2e/tsconfig.json
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: pnpm test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
