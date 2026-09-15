@@ -16,7 +16,7 @@ const auth = useAuthStore()
 const token = ref('')
 const showToken = ref(false)
 
-const { isSubmitting, fieldError, error, login, cancelLogin, clearErrors } = useLogin()
+const { isPending, fieldError, error, login, cancelLogin, clearErrors } = useLogin()
 
 const sessionNotice = computed(() => {
   if (auth.endReason === 'token-rejected') {
@@ -122,7 +122,7 @@ async function submit() {
           {{ sessionNotice }}
         </div>
 
-        <form class="space-y-5" novalidate :aria-busy="isSubmitting" @submit.prevent="submit">
+        <form class="space-y-5" novalidate :aria-busy="isPending" @submit.prevent="submit">
           <div class="space-y-2">
             <Label for="agent-token">Agent token</Label>
 
@@ -135,7 +135,7 @@ async function submit() {
                 autocomplete="off"
                 autocapitalize="none"
                 :spellcheck="false"
-                :readonly="isSubmitting"
+                :readonly="isPending"
                 :aria-invalid="tokenIsInvalid"
                 :aria-describedby="tokenDescription"
                 required
@@ -178,14 +178,14 @@ async function submit() {
 
           <AppButton
             type="submit"
-            :loading="isSubmitting"
+            :loading="isPending"
             loading-label="Verifying your token…"
             class="w-full"
           >
             Connect
           </AppButton>
 
-          <p v-if="isSubmitting" role="status" class="sr-only">Verifying your agent token.</p>
+          <p v-if="isPending" role="status" class="sr-only">Verifying your agent token.</p>
         </form>
 
         <div class="space-y-3 border-t pt-5 text-sm text-muted-foreground">

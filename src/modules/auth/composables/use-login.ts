@@ -1,5 +1,5 @@
-import { useQueryClient } from '@tanstack/vue-query'
-import { onScopeDispose, ref, shallowRef, watch } from 'vue'
+import { useMutation, useQueryClient } from '@tanstack/vue-query'
+import { onScopeDispose, ref, watch } from 'vue'
 import { z } from 'zod'
 
 import { getAgent } from '@/modules/agent/api/agent.api'
@@ -17,19 +17,76 @@ const tokenSchema = z
     'Paste the token only, without spaces or the Bearer prefix.',
   )
 
+type LoginVariables = {
+  token: string
+  controller: AbortController
+  sessionId: string
+}
+
 export function useLogin() {
   const auth = useAuthStore()
   const queryClient = useQueryClient()
 
-  const isSubmitting = ref(false)
   const fieldError = ref('')
-  const error = shallowRef<ApiError | null>(null)
 
   let activeController: AbortController | null = null
 
+  const { mutateAsync, isPending, error, reset } = useMutation<boolean, ApiError, LoginVariables>({
+    // A login must fail promptly when offline, not resume later in the background.
+    networkMode: 'always',
+    retry: false,
+    gcTime: 0,
+
+    mutationFn: async ({ token, controller, sessionId: startingSessionId }) => {
+      try {
+        if (controller.signal.aborted || auth.sessionId !== startingSessionId) {
+          return false
+        }
+
+        const agent = await getAgent(token, controller.signal)
+
+        if (controller.signal.aborted || auth.sessionId !== startingSessionId) {
+          return false
+        }
+
+        // Do not cancel our own completed request when establishing the session.
+        activeController = null
+
+        const sessionId = auth.establishSession(token)
+
+        if (sessionId === null) {
+          throw new ApiError(
+            'request',
+            'Your browser could not save the session. Allow site storage and try again.',
+          )
+        }
+
+        queryClient.clear()
+        queryClient.setQueryData(agentKeys.current(sessionId), agent)
+
+        return true
+      } catch (cause: unknown) {
+        if (controller.signal.aborted || auth.sessionId !== startingSessionId) {
+          return false
+        }
+
+        throw cause instanceof ApiError
+          ? cause
+          : new ApiError('request', 'Unable to connect. Please try again.')
+      } finally {
+        if (activeController === controller) {
+          activeController = null
+        }
+      }
+    },
+  })
+
   function clearErrors() {
     fieldError.value = ''
-    error.value = null
+
+    if (!isPending.value) {
+      reset()
+    }
   }
 
   function cancelLogin() {
@@ -46,7 +103,7 @@ export function useLogin() {
   onScopeDispose(cancelLogin)
 
   async function login(rawToken: string): Promise<boolean> {
-    if (isSubmitting.value) {
+    if (isPending.value) {
       return false
     }
 
@@ -61,53 +118,18 @@ export function useLogin() {
     }
 
     const controller = new AbortController()
-    const startingSessionId = auth.sessionId
-
     activeController = controller
-    isSubmitting.value = true
 
     try {
-      const agent = await getAgent(parsed.data, controller.signal)
-
-      if (controller.signal.aborted || auth.sessionId !== startingSessionId) {
-        return false
-      }
-
-      // The request is complete before we change the session identity.
-      activeController = null
-
-      const sessionId = auth.establishSession(parsed.data)
-
-      if (sessionId === null) {
-        error.value = new ApiError(
-          'request',
-          'Your browser could not save the session. Allow site storage and try again.',
-        )
-
-        return false
-      }
-
-      queryClient.clear()
-      queryClient.setQueryData(agentKeys.current(sessionId), agent)
-
-      return true
-    } catch (cause: unknown) {
-      if (!controller.signal.aborted && auth.sessionId === startingSessionId) {
-        error.value =
-          cause instanceof ApiError
-            ? cause
-            : new ApiError('request', 'Unable to connect. Please try again.')
-      }
-
+      return await mutateAsync({ token: parsed.data, controller, sessionId: auth.sessionId })
+    } catch {
+      // TanStack exposes the request error to the form through `error`.
       return false
-    } finally {
-      activeController = null
-      isSubmitting.value = false
     }
   }
 
   return {
-    isSubmitting,
+    isPending,
     fieldError,
     error,
     login,

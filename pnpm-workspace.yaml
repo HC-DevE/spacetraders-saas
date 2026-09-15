@@ -1,2 +1,3 @@
 allowBuilds:
   vue-demi: true
+  msw: false

@@ -1,52 +1,75 @@
 <script setup lang="ts">
-import { watch } from 'vue'
-import { RouterLink, RouterView, useRouter } from 'vue-router'
+import { computed, watch } from 'vue'
+import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 
 import { useAuthStore } from '@/modules/auth/auth.store'
-import { useAuth } from '@/modules/agent/composables/use-auth'
 import AppButton from '@/shared/components/AppButton.vue'
+import { useAuth } from '@/modules/auth/composables/use-auth'
 
-const router = useRouter()
 const auth = useAuthStore()
 const { logout } = useAuth()
+const route = useRoute()
+const router = useRouter()
+
+const isFleetSection = computed(() => route.name === 'fleet' || route.name === 'ship-detail')
 
 watch(
   () => auth.hasToken,
-  async (hasToken) => {
+  (hasToken) => {
     if (!hasToken) {
-      await router.replace({ name: 'login' })
+      void router.replace({ name: 'login' })
     }
   },
 )
 </script>
 
 <template>
-  <div class="min-h-screen">
+  <div class="min-h-screen bg-background text-foreground">
     <a
       href="#main-content"
-      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-card focus:p-3"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground"
     >
       Skip to content
     </a>
 
     <header class="border-b bg-card">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-        <RouterLink :to="{ name: 'agent-overview' }" class="flex items-center gap-3">
+        <RouterLink
+          :to="{ name: 'agent-overview' }"
+          class="flex items-center gap-3 rounded-sm font-semibold"
+        >
           <!-- <span
             aria-hidden="true"
-            class="grid size-10 place-items-center rounded-xl bg-primary font-bold text-primary-foreground"
+            class="flex size-9 items-center justify-center rounded-lg bg-primary text-primary-foreground"
           >
             S
           </span> -->
-
-          <span>
-            <span class="block font-semibold tracking-tight"> SpaceTraders </span>
-            <!-- <span class="block text-xs text-muted-foreground"> Operations console </span> -->
-          </span>
+          Space Control
         </RouterLink>
 
-        <AppButton variant="outline" data-testid="logout" @click="logout"> Sign out </AppButton>
+        <AppButton variant="outline" data-testid="logout" @click="logout()"> Sign out </AppButton>
       </div>
+
+      <nav aria-label="Main navigation" class="mx-auto flex max-w-6xl gap-2 px-4 pb-3 sm:px-6">
+        <RouterLink
+          :to="{ name: 'agent-overview' }"
+          class="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+          exact-active-class="bg-secondary text-secondary-foreground"
+        >
+          Overview
+        </RouterLink>
+
+        <RouterLink
+          :to="{ name: 'fleet' }"
+          class="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+          :class="{ 'bg-secondary text-secondary-foreground': isFleetSection }"
+          :aria-current="
+            isFleetSection ? (route.name === 'fleet' ? 'page' : 'location') : undefined
+          "
+        >
+          Fleet
+        </RouterLink>
+      </nav>
     </header>
 
     <main id="main-content" tabindex="-1" class="mx-auto max-w-6xl px-4 py-8 sm:px-6">

@@ -1,4 +1,4 @@
-import { VueQueryPlugin } from '@tanstack/vue-query'
+import { onlineManager, VueQueryPlugin } from '@tanstack/vue-query'
 import { flushPromises, mount } from '@vue/test-utils'
 import { http, HttpResponse } from 'msw'
 import { setupServer } from 'msw/node'
@@ -49,6 +49,8 @@ afterEach(() => {
   cleanup?.()
   cleanup = undefined
   server.resetHandlers()
+  vi.restoreAllMocks()
+  onlineManager.setOnline(true)
   sessionStorage.clear()
 })
 
@@ -154,6 +156,85 @@ describe('Authentication flow', () => {
     expect(router.currentRoute.value.name).toBe('login')
   })
 
+  it('clears the request error when the token changes and allows another attempt', async () => {
+    rejectToken()
+
+    const { wrapper, router } = await mountApplication()
+
+    await wrapper.get('#agent-token').setValue('invalid-token')
+    await wrapper.get('form').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('#login-error').exists()).toBe(true)
+    })
+
+    expect(wrapper.get<HTMLButtonElement>('button[type="submit"]').element.disabled).toBe(false)
+
+    server.use(http.get(endpoint, () => HttpResponse.json({ data: agent })))
+
+    await wrapper.get('#agent-token').setValue('valid-token')
+
+    expect(wrapper.find('#login-error').exists()).toBe(false)
+
+    await wrapper.get('form').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(router.currentRoute.value.name).toBe('agent-overview')
+    })
+
+    expect(sessionStorage.getItem(storageKey)).toBe('valid-token')
+  })
+
+  it('reports a storage failure without opening a session or caching the agent', async () => {
+    const { wrapper, auth, queryClient, router } = await mountApplication()
+
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Storage unavailable', 'SecurityError')
+    })
+
+    await wrapper.get('#agent-token').setValue('valid-token')
+    await wrapper.get('form').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(wrapper.get('#login-error').text()).toContain('could not save the session')
+    })
+
+    expect(wrapper.get<HTMLButtonElement>('button[type="submit"]').element.disabled).toBe(false)
+    expect(auth.hasToken).toBe(false)
+    expect(sessionStorage.getItem(storageKey)).toBeNull()
+    expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
+    expect(router.currentRoute.value.name).toBe('login')
+  })
+
+  it('reports an offline failure without replaying the login on reconnection', async () => {
+    onlineManager.setOnline(false)
+
+    server.use(
+      http.get(endpoint, () => {
+        requestCount += 1
+        return HttpResponse.error()
+      }),
+    )
+
+    const { wrapper, auth, router } = await mountApplication()
+
+    await wrapper.get('#agent-token').setValue('valid-token')
+    await wrapper.get('form').trigger('submit')
+
+    await vi.waitFor(() => {
+      expect(wrapper.find('#login-error').exists()).toBe(true)
+    })
+
+    expect(wrapper.get<HTMLButtonElement>('button[type="submit"]').element.disabled).toBe(false)
+
+    onlineManager.setOnline(true)
+    await flushPromises()
+
+    expect(requestCount).toBe(1)
+    expect(auth.hasToken).toBe(false)
+    expect(router.currentRoute.value.name).toBe('login')
+  })
+
   it('restores a token and fetches fresh agent information', async () => {
     sessionStorage.setItem(storageKey, 'saved-token')
 
@@ -207,6 +288,44 @@ describe('Authentication flow', () => {
 
     expect(auth.hasToken).toBe(false)
     expect(sessionStorage.getItem(storageKey)).toBeNull()
+  })
+
+  it('does not connect after leaving the login page during a request', async () => {
+    let releaseResponse: (() => void) | undefined
+
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve
+    })
+
+    server.use(
+      http.get(endpoint, async () => {
+        requestCount += 1
+        await responseGate
+        return HttpResponse.json({ data: agent })
+      }),
+    )
+
+    const { wrapper, auth, queryClient, router } = await mountApplication()
+
+    try {
+      await wrapper.get('#agent-token').setValue('valid-token')
+      await wrapper.get('form').trigger('submit')
+
+      await vi.waitFor(() => {
+        expect(requestCount).toBe(1)
+      })
+
+      await router.push('/missing-page')
+      releaseResponse?.()
+      await flushPromises()
+
+      expect(router.currentRoute.value.name).toBe('not-found')
+      expect(auth.hasToken).toBe(false)
+      expect(sessionStorage.getItem(storageKey)).toBeNull()
+      expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
+    } finally {
+      releaseResponse?.()
+    }
   })
 
   it('prevents duplicate submissions and ignores a cancelled login', async () => {

@@ -24,6 +24,16 @@ export function createAppRouter(
           name: 'agent-overview',
           component: () => import('@/modules/agent/pages/AgentOverviewPage.vue'),
         },
+        {
+          path: 'fleet',
+          name: 'fleet',
+          component: () => import('@/modules/fleet/pages/FleetPage.vue'),
+        },
+        {
+          path: 'fleet/:symbol',
+          name: 'ship-detail',
+          component: () => import('@/modules/fleet/pages/ShipDetailPage.vue'),
+        },
       ],
     },
     {
