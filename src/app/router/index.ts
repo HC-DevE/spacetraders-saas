@@ -34,6 +34,26 @@ export function createAppRouter(
           name: 'ship-detail',
           component: () => import('@/modules/fleet/pages/ShipDetailPage.vue'),
         },
+        {
+          path: 'systems',
+          name: 'systems',
+          component: () => import('@/modules/systems/pages/SystemsPage.vue'),
+        },
+        {
+          path: 'systems/:systemSymbol',
+          name: 'system-detail',
+          component: () => import('@/modules/systems/pages/SystemDetailPage.vue'),
+        },
+        {
+          path: 'systems/:systemSymbol/waypoints/:waypointSymbol',
+          name: 'waypoint-detail',
+          component: () => import('@/modules/systems/pages/WaypointDetailPage.vue'),
+        },
+        {
+          path: 'systems/:systemSymbol/waypoints/:waypointSymbol/market',
+          name: 'market',
+          component: () => import('@/modules/markets/pages/MarketPage.vue'),
+        },
       ],
     },
     {

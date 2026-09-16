@@ -12,6 +12,7 @@ const route = useRoute()
 const router = useRouter()
 
 const isFleetSection = computed(() => route.name === 'fleet' || route.name === 'ship-detail')
+const isSystemsSection = computed(() => route.path.startsWith('/systems'))
 
 watch(
   () => auth.hasToken,
@@ -68,6 +69,19 @@ watch(
           "
         >
           Fleet
+        </RouterLink>
+
+        <RouterLink
+          :to="{ name: 'systems' }"
+          class="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+          :class="{
+            'bg-secondary text-secondary-foreground': isSystemsSection,
+          }"
+          :aria-current="
+            isSystemsSection ? (route.name === 'systems' ? 'page' : 'location') : undefined
+          "
+        >
+          Systems
         </RouterLink>
       </nav>
     </header>
