@@ -108,6 +108,19 @@ describe('Ship details', () => {
 
     expect(wrapper.find('[aria-label="Ship resources"]').exists()).toBe(true)
     expect(wrapper.find('a[aria-label="View ship TEST-1"]').exists()).toBe(false)
+
+    expect(wrapper.get('a[aria-label="Open system X1-MQ65"]').attributes('href')).toBe(
+      '/systems/X1-MQ65',
+    )
+    expect(wrapper.get('a[aria-label="Open waypoint X1-MQ65-A1"]').attributes('href')).toBe(
+      '/systems/X1-MQ65/waypoints/X1-MQ65-A1',
+    )
+    expect(wrapper.get('a[aria-label="Open origin waypoint X1-MQ65-A1"]').attributes('href')).toBe(
+      '/systems/X1-MQ65/waypoints/X1-MQ65-A1',
+    )
+    expect(
+      wrapper.get('a[aria-label="Open destination waypoint X1-MQ65-A1"]').attributes('href'),
+    ).toBe('/systems/X1-MQ65/waypoints/X1-MQ65-A1')
   })
 
   it('displays cargo resources and installed equipment as readable cards', async () => {

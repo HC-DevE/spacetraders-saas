@@ -124,6 +124,13 @@ describe('Fleet page', () => {
     expect(wrapper.find('button[aria-label="View ship TEST-1"]').exists()).toBe(true)
 
     expect(wrapper.find('button[aria-label="View ship TEST-2"]').exists()).toBe(true)
+
+    expect(wrapper.get('a[aria-label="Open system X1-MQ65"]').attributes('href')).toBe(
+      '/systems/X1-MQ65',
+    )
+    expect(wrapper.get('a[aria-label="Open waypoint X1-MQ65-A1"]').attributes('href')).toBe(
+      '/systems/X1-MQ65/waypoints/X1-MQ65-A1',
+    )
   })
 
   it('opens the selected ship details using its button', async () => {

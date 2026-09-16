@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { formatNumber } from '@/shared/utils/formatters'
 import type { Ship } from '../../schemas/ship.schema'
-import { formatNumber, formatPercentage } from '../../utils/ship-formatters'
+import { formatPercentage } from '../../utils/ship-formatters'
 
 defineProps<{
   frame: Ship['frame']

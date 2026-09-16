@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { formatLabel, formatNumber } from '@/shared/utils/formatters'
 import type { Ship } from '../../schemas/ship.schema'
-import { formatLabel, formatNumber } from '../../utils/ship-formatters'
 
 defineProps<{ mounts: Ship['mounts'] }>()
 </script>

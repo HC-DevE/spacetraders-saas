@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { formatDate, formatNumber } from '@/shared/utils/formatters'
 import type { Ship } from '../../schemas/ship.schema'
-import { formatDate, formatNumber, percentage } from '../../utils/ship-formatters'
+import { percentage } from '../../utils/ship-formatters'
 
 defineProps<{
   fuel: Ship['fuel']

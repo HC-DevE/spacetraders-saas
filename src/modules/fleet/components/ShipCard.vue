@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 
 import AppButton from '@/shared/components/AppButton.vue'
+import { formatDate, formatLabel, formatNumber } from '@/shared/utils/formatters'
 
 import type { Ship } from '../schemas/ship.schema'
-import { formatDate, formatLabel, formatNumber, percentage } from '../utils/ship-formatters'
+import { percentage } from '../utils/ship-formatters'
 import { formatShipStatus } from '../utils/ship-status'
 
 const props = defineProps<{ ship: Ship }>()
@@ -13,6 +14,17 @@ const router = useRouter()
 
 const isInTransit = computed(() => props.ship.nav.status === 'IN_TRANSIT')
 const status = computed(() => formatShipStatus(props.ship.nav.status))
+const displayedLocation = computed(() =>
+  isInTransit.value
+    ? {
+        systemSymbol: props.ship.nav.route.destination.systemSymbol,
+        waypointSymbol: props.ship.nav.route.destination.symbol,
+      }
+    : {
+        systemSymbol: props.ship.nav.systemSymbol,
+        waypointSymbol: props.ship.nav.waypointSymbol,
+      },
+)
 
 function viewDetails() {
   return router.push({
@@ -81,14 +93,35 @@ function viewDetails() {
         <div class="min-w-0">
           <dt class="text-xs text-muted-foreground">System</dt>
           <dd class="mt-1 text-sm font-medium">
-            {{ isInTransit ? ship.nav.route.destination.systemSymbol : ship.nav.systemSymbol }}
+            <RouterLink
+              :to="{
+                name: 'system-detail',
+                params: { systemSymbol: displayedLocation.systemSymbol },
+              }"
+              :aria-label="`Open system ${displayedLocation.systemSymbol}`"
+              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {{ displayedLocation.systemSymbol }}
+            </RouterLink>
           </dd>
         </div>
 
         <div class="min-w-0">
           <dt class="text-xs text-muted-foreground">Waypoint</dt>
           <dd class="mt-1 text-sm font-medium">
-            {{ isInTransit ? ship.nav.route.destination.symbol : ship.nav.waypointSymbol }}
+            <RouterLink
+              :to="{
+                name: 'waypoint-detail',
+                params: {
+                  systemSymbol: displayedLocation.systemSymbol,
+                  waypointSymbol: displayedLocation.waypointSymbol,
+                },
+              }"
+              :aria-label="`Open waypoint ${displayedLocation.waypointSymbol}`"
+              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {{ displayedLocation.waypointSymbol }}
+            </RouterLink>
           </dd>
         </div>
       </dl>

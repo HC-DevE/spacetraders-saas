@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { RouterLink } from 'vue-router'
+
 import type { Ship } from '../../schemas/ship.schema'
-import { formatDate, formatLabel } from '../../utils/ship-formatters'
+import { formatDate, formatLabel } from '@/shared/utils/formatters'
 
 defineProps<{ nav: Ship['nav'] }>()
 </script>
@@ -22,14 +24,32 @@ defineProps<{ nav: Ship['nav'] }>()
       <div class="min-w-0">
         <dt class="text-sm text-muted-foreground">System</dt>
         <dd class="mt-1 font-medium">
-          {{ nav.systemSymbol }}
+          <RouterLink
+            :to="{ name: 'system-detail', params: { systemSymbol: nav.systemSymbol } }"
+            :aria-label="`Open system ${nav.systemSymbol}`"
+            class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {{ nav.systemSymbol }}
+          </RouterLink>
         </dd>
       </div>
 
       <div class="min-w-0">
         <dt class="text-sm text-muted-foreground">Navigation waypoint</dt>
         <dd class="mt-1 font-medium">
-          {{ nav.waypointSymbol }}
+          <RouterLink
+            :to="{
+              name: 'waypoint-detail',
+              params: {
+                systemSymbol: nav.systemSymbol,
+                waypointSymbol: nav.waypointSymbol,
+              },
+            }"
+            :aria-label="`Open waypoint ${nav.waypointSymbol}`"
+            class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {{ nav.waypointSymbol }}
+          </RouterLink>
         </dd>
       </div>
     </dl>
@@ -44,7 +64,19 @@ defineProps<{ nav: Ship['nav'] }>()
           <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Origin</p>
 
           <p class="mt-2 font-semibold">
-            {{ nav.route.origin.symbol }}
+            <RouterLink
+              :to="{
+                name: 'waypoint-detail',
+                params: {
+                  systemSymbol: nav.route.origin.systemSymbol,
+                  waypointSymbol: nav.route.origin.symbol,
+                },
+              }"
+              :aria-label="`Open origin waypoint ${nav.route.origin.symbol}`"
+              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {{ nav.route.origin.symbol }}
+            </RouterLink>
           </p>
 
           <p class="mt-1 text-sm capitalize text-muted-foreground">
@@ -53,7 +85,17 @@ defineProps<{ nav: Ship['nav'] }>()
           </p>
 
           <p class="mt-1 text-xs text-muted-foreground">
-            System {{ nav.route.origin.systemSymbol }}
+            System
+            <RouterLink
+              :to="{
+                name: 'system-detail',
+                params: { systemSymbol: nav.route.origin.systemSymbol },
+              }"
+              :aria-label="`Open origin system ${nav.route.origin.systemSymbol}`"
+              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {{ nav.route.origin.systemSymbol }}
+            </RouterLink>
           </p>
         </div>
 
@@ -61,7 +103,19 @@ defineProps<{ nav: Ship['nav'] }>()
           <p class="text-xs font-semibold uppercase tracking-wide">Destination</p>
 
           <p class="mt-2 font-semibold">
-            {{ nav.route.destination.symbol }}
+            <RouterLink
+              :to="{
+                name: 'waypoint-detail',
+                params: {
+                  systemSymbol: nav.route.destination.systemSymbol,
+                  waypointSymbol: nav.route.destination.symbol,
+                },
+              }"
+              :aria-label="`Open destination waypoint ${nav.route.destination.symbol}`"
+              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {{ nav.route.destination.symbol }}
+            </RouterLink>
           </p>
 
           <p class="mt-1 text-sm capitalize">
@@ -69,7 +123,19 @@ defineProps<{ nav: Ship['nav'] }>()
             · {{ nav.route.destination.x }}, {{ nav.route.destination.y }}
           </p>
 
-          <p class="mt-1 text-xs">System {{ nav.route.destination.systemSymbol }}</p>
+          <p class="mt-1 text-xs">
+            System
+            <RouterLink
+              :to="{
+                name: 'system-detail',
+                params: { systemSymbol: nav.route.destination.systemSymbol },
+              }"
+              :aria-label="`Open destination system ${nav.route.destination.systemSymbol}`"
+              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {{ nav.route.destination.systemSymbol }}
+            </RouterLink>
+          </p>
         </div>
       </div>
 

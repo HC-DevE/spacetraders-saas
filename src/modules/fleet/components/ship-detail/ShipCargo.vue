@@ -1,6 +1,6 @@
 <script setup lang="ts">
+import { formatNumber } from '@/shared/utils/formatters'
 import type { Ship } from '../../schemas/ship.schema'
-import { formatNumber } from '../../utils/ship-formatters'
 
 defineProps<{
   cargo: Ship['cargo']

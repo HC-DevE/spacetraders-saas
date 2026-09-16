@@ -1,6 +1,7 @@
 <script setup lang="ts">
+import { formatDate } from '@/shared/utils/formatters'
 import type { Ship } from '../../schemas/ship.schema'
-import { formatDate, formatDuration } from '../../utils/ship-formatters'
+import { formatDuration } from '../../utils/ship-formatters'
 
 defineProps<{ cooldown: Ship['cooldown'] }>()
 </script>

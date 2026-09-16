@@ -16,7 +16,7 @@ import ShipNavigation from '../components/ship-detail/ShipNavigation.vue'
 import ShipResources from '../components/ship-detail/ShipResources.vue'
 import { useShipQuery } from '../composables/use-ship-query'
 import { formatShipStatus } from '../utils/ship-status'
-import { formatDate, formatLabel } from '../utils/ship-formatters.ts'
+import { formatDate, formatLabel } from '@/shared/utils/formatters.ts'
 
 const route = useRoute()
 

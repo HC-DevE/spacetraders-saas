@@ -1,12 +1,19 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+import { RouterLink } from 'vue-router'
+
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
+import { formatNumber } from '@/shared/utils/formatters'
+import { getSystemSymbolFromWaypointSymbol } from '@/shared/utils/space-symbols'
 
 import { useAgentQuery } from '../composables/use-agent-query'
 
 const { data: agent, error, isPending, isFetching, isPaused, refetch } = useAgentQuery()
 
-const numberFormatter = new Intl.NumberFormat('en-US')
+const headquartersSystemSymbol = computed(() =>
+  agent.value ? getSystemSymbolFromWaypointSymbol(agent.value.headquarters) : undefined,
+)
 </script>
 
 <template>
@@ -80,21 +87,42 @@ const numberFormatter = new Intl.NumberFormat('en-US')
           <div class="rounded-xl border bg-card p-6 shadow-sm">
             <dt class="text-sm text-muted-foreground">Available credits</dt>
             <dd class="mt-3 wrap-break-word text-2xl font-semibold tabular-nums">
-              {{ numberFormatter.format(agent.credits) }}
+              {{ formatNumber(agent.credits) }}
             </dd>
           </div>
 
           <div class="rounded-xl border bg-card p-6 shadow-sm">
             <dt class="text-sm text-muted-foreground">Ships owned</dt>
             <dd class="mt-3 text-2xl font-semibold tabular-nums">
-              {{ numberFormatter.format(agent.shipCount) }}
+              <RouterLink
+                :to="{ name: 'fleet' }"
+                aria-label="Open fleet"
+                class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {{ formatNumber(agent.shipCount) }}
+              </RouterLink>
             </dd>
           </div>
 
           <div class="rounded-xl border bg-card p-6 shadow-sm">
             <dt class="text-sm text-muted-foreground">Headquarters</dt>
             <dd class="mt-3 wrap-break-word text-xl font-semibold">
-              {{ agent.headquarters }}
+              <RouterLink
+                v-if="headquartersSystemSymbol"
+                :to="{
+                  name: 'waypoint-detail',
+                  params: {
+                    systemSymbol: headquartersSystemSymbol,
+                    waypointSymbol: agent.headquarters,
+                  },
+                }"
+                :aria-label="`Open headquarters ${agent.headquarters}`"
+                class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {{ agent.headquarters }}
+              </RouterLink>
+
+              <span v-else>{{ agent.headquarters }}</span>
             </dd>
           </div>
         </dl>

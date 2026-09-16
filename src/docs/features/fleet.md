@@ -53,7 +53,9 @@ ne sont pas implémentées.
 | `pages/ShipDetailPage.vue`       | Composition et états de la fiche                           |
 | `components/ShipCard.vue`        | Résumé d’un vaisseau dans la liste                         |
 | `components/ship-detail/`        | Sections de la fiche détaillée                             |
-| `utils/ship-formatters.ts`       | Formatage des nombres, dates, durées et pourcentages       |
+| `shared/utils/formatters.ts`     | Formatage générique des nombres, dates et libellés         |
+| `shared/schemas/trade-symbol.schema.ts` | Contrat `TradeSymbol` partagé avec Markets            |
+| `utils/ship-formatters.ts`       | Durées et pourcentages spécifiques aux vaisseaux           |
 | `utils/ship-status.ts`           | Libellés et couleurs des statuts                           |
 | `tests/`                         | Tests de parcours et de présentation                       |
 
@@ -178,6 +180,15 @@ Le bouton d’ouverture du détail effectue une navigation dans l’onglet
 courant. L’ouverture native dans un nouvel onglet n’est pas proposée
 par ce bouton.
 
+Les localisations exploitent également les routes Systems existantes :
+
+- une carte de vaisseau peut ouvrir son système et son waypoint ;
+- la fiche détaillée peut ouvrir le système courant, le waypoint courant,
+  l’origine et la destination lorsqu’ils sont présents.
+
+Ces liens utilisent les symboles retournés par le contrat Ship et ne
+déclenchent aucun appel de détail supplémentaire avant navigation.
+
 ## Tests
 
 ### `ships.spec.ts`
@@ -222,8 +233,9 @@ Tests des comportements complémentaires :
 
 ### Tests des utilitaires
 
-Les fichiers `ship-formatters.spec.ts` et `ship-status.spec.ts`
-vérifient le formatage et la présentation des statuts.
+Les tests partagés vérifient les formatters génériques. `ship-formatters.spec.ts`
+ne garde que les calculs spécifiques aux vaisseaux, et `ship-status.spec.ts`
+vérifie la présentation des statuts.
 
 Les tests d’intégration utilisent MSW pour simuler les réponses HTTP.
 Ils ne dépendent pas d’un compte SpaceTraders réel.
