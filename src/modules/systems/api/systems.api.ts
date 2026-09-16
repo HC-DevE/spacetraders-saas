@@ -1,4 +1,5 @@
 import { ApiError } from '@/shared/api/api-error'
+import { apiEndpoints } from '@/shared/api/endpoints'
 import { getJson } from '@/shared/api/http'
 
 import {
@@ -21,7 +22,8 @@ export async function getSystems(
     limit: String(pagination.limit),
   })
 
-  const response = await getJson(`/systems?${search.toString()}`, token, signal)
+  const response = await getJson(`${apiEndpoints.systems.list}?${search.toString()}`, token, signal)
+
   const result = systemsResponseSchema.safeParse(response)
 
   if (!result.success) {
@@ -46,7 +48,7 @@ export async function getSystem(
   symbol: string,
   signal?: AbortSignal,
 ): Promise<System> {
-  const response = await getJson(`/systems/${encodeURIComponent(symbol)}`, token, signal)
+  const response = await getJson(apiEndpoints.systems.detail(symbol), token, signal)
 
   const result = systemResponseSchema.safeParse(response)
 

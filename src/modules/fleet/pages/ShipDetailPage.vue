@@ -17,6 +17,7 @@ import ShipResources from '../components/ship-detail/ShipResources.vue'
 import { useShipQuery } from '../composables/use-ship-query'
 import { formatShipStatus } from '../utils/ship-status'
 import { formatDate, formatLabel } from '@/shared/utils/formatters.ts'
+import { routeNames } from '@/app/router/route-names'
 
 const route = useRoute()
 
@@ -40,7 +41,7 @@ const status = computed(() => formatShipStatus(ship.value?.nav.status))
 <template>
   <section class="min-w-0 space-y-6 wrap-anywhere">
     <RouterLink
-      :to="{ name: 'fleet' }"
+      :to="{ name: routeNames.fleet }"
       aria-label="Back to fleet"
       class="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline"
     >

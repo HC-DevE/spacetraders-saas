@@ -5,6 +5,7 @@ import AppButton from '@/shared/components/AppButton.vue'
 
 import type { System } from '../schemas/system.schema'
 import { formatLabel } from '@/shared/utils/formatters'
+import { routeNames } from '@/app/router/route-names'
 
 const props = defineProps<{
   system: System
@@ -14,7 +15,7 @@ const router = useRouter()
 
 function viewDetails() {
   return router.push({
-    name: 'system-detail',
+    name: routeNames.systemDetail,
     params: {
       systemSymbol: props.system.symbol,
     },

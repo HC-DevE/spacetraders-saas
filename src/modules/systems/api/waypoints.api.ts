@@ -1,4 +1,5 @@
 import { ApiError } from '@/shared/api/api-error'
+import { apiEndpoints } from '@/shared/api/endpoints'
 import { getJson } from '@/shared/api/http'
 
 import { waypointResponseSchema, type Waypoint } from '../schemas/waypoint.schema'
@@ -26,11 +27,9 @@ export async function getWaypoints(
     search.append('traits', trait)
   }
 
-  const response = await getJson(
-    `/systems/${encodeURIComponent(systemSymbol)}/waypoints?${search.toString()}`,
-    token,
-    signal,
-  )
+  const endpoint = apiEndpoints.systems.waypoints.list(systemSymbol)
+
+  const response = await getJson(`${endpoint}?${search.toString()}`, token, signal)
 
   const result = waypointsResponseSchema.safeParse(response)
 
@@ -65,7 +64,7 @@ export async function getWaypoint(
   signal?: AbortSignal,
 ): Promise<Waypoint> {
   const response = await getJson(
-    `/systems/${encodeURIComponent(systemSymbol)}/waypoints/${encodeURIComponent(waypointSymbol)}`,
+    apiEndpoints.systems.waypoints.detail(systemSymbol, waypointSymbol),
     token,
     signal,
   )

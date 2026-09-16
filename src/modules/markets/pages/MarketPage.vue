@@ -10,6 +10,7 @@ import MarketGoodsTable from '../components/MarketGoodsTable.vue'
 import MarketResources from '../components/MarketResources.vue'
 import MarketTransactionsTable from '../components/MarketTransactionsTable.vue'
 import { useMarketQuery } from '../composables/use-market-query'
+import { routeNames } from '@/app/router/route-names.ts'
 
 const route = useRoute()
 
@@ -37,7 +38,7 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
   <section class="min-w-0 space-y-8 wrap-anywhere">
     <RouterLink
       :to="{
-        name: 'waypoint-detail',
+        name: routeNames.waypointDetail,
         params: {
           systemSymbol,
           waypointSymbol,
@@ -80,7 +81,7 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
 
           <p class="mt-1 text-sm text-muted-foreground">
             <RouterLink
-              :to="{ name: 'system-detail', params: { systemSymbol } }"
+              :to="{ name: routeNames.systemDetail, params: { systemSymbol } }"
               :aria-label="`Open system ${systemSymbol}`"
               class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >

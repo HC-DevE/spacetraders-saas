@@ -8,6 +8,7 @@ import { formatNumber } from '@/shared/utils/formatters'
 import { getSystemSymbolFromWaypointSymbol } from '@/shared/utils/space-symbols'
 
 import { useAgentQuery } from '../composables/use-agent-query'
+import { routeNames } from '@/app/router/route-names'
 
 const { data: agent, error, isPending, isFetching, isPaused, refetch } = useAgentQuery()
 
@@ -95,7 +96,7 @@ const headquartersSystemSymbol = computed(() =>
             <dt class="text-sm text-muted-foreground">Ships owned</dt>
             <dd class="mt-3 text-2xl font-semibold tabular-nums">
               <RouterLink
-                :to="{ name: 'fleet' }"
+                :to="{ name: routeNames.fleet }"
                 aria-label="Open fleet"
                 class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
@@ -110,7 +111,7 @@ const headquartersSystemSymbol = computed(() =>
               <RouterLink
                 v-if="headquartersSystemSymbol"
                 :to="{
-                  name: 'waypoint-detail',
+                  name: routeNames.waypointDetail,
                   params: {
                     systemSymbol: headquartersSystemSymbol,
                     waypointSymbol: agent.headquarters,

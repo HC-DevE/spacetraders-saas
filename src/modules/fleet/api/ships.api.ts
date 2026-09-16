@@ -1,4 +1,5 @@
 import { ApiError } from '@/shared/api/api-error'
+import { apiEndpoints } from '@/shared/api/endpoints'
 import { getJson } from '@/shared/api/http'
 
 import {
@@ -21,7 +22,8 @@ export async function getShips(
     limit: String(pagination.limit),
   })
 
-  const response = await getJson(`/my/ships?${search.toString()}`, token, signal)
+  const response = await getJson(`${apiEndpoints.ships.list}?${search.toString()}`, token, signal)
+
   const result = shipsResponseSchema.safeParse(response)
 
   if (!result.success) {
@@ -42,7 +44,7 @@ export async function getShips(
 }
 
 export async function getShip(token: string, symbol: string, signal?: AbortSignal): Promise<Ship> {
-  const response = await getJson(`/my/ships/${encodeURIComponent(symbol)}`, token, signal)
+  const response = await getJson(apiEndpoints.ships.detail(symbol), token, signal)
 
   const result = shipResponseSchema.safeParse(response)
 

@@ -6,6 +6,7 @@ import { formatDate, formatLabel } from '@/shared/utils/formatters'
 
 import type { Waypoint } from '../schemas/waypoint.schema'
 import { getMarketplaceStatus } from '../utils/waypoint-status'
+import { routeNames } from '@/app/router/route-names'
 
 const props = defineProps<{
   waypoint: Waypoint
@@ -41,7 +42,7 @@ const marketplaceStatus = computed(() => getMarketplaceStatus(props.waypoint))
           <dd class="mt-1 font-semibold">
             <RouterLink
               :to="{
-                name: 'system-detail',
+                name: routeNames.systemDetail,
                 params: { systemSymbol: waypoint.systemSymbol },
               }"
               :aria-label="`Open system ${waypoint.systemSymbol}`"
@@ -89,7 +90,7 @@ const marketplaceStatus = computed(() => getMarketplaceStatus(props.waypoint))
             <RouterLink
               v-if="waypoint.orbits"
               :to="{
-                name: 'waypoint-detail',
+                name: routeNames.waypointDetail,
                 params: {
                   systemSymbol: waypoint.systemSymbol,
                   waypointSymbol: waypoint.orbits,
@@ -191,7 +192,7 @@ const marketplaceStatus = computed(() => getMarketplaceStatus(props.waypoint))
         <li v-for="orbital in waypoint.orbitals" :key="orbital.symbol">
           <RouterLink
             :to="{
-              name: 'waypoint-detail',
+              name: routeNames.waypointDetail,
               params: {
                 systemSymbol: waypoint.systemSymbol,
                 waypointSymbol: orbital.symbol,

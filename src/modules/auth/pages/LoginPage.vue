@@ -10,6 +10,8 @@ import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
 
 import { useLogin } from '../composables/use-login'
+import { routeNames } from '@/app/router/route-names'
+import { SPACE_TRADERS_PORTAL_URL } from '@/config/space-traders'
 
 const router = useRouter()
 
@@ -72,7 +74,7 @@ async function submit() {
   token.value = ''
   showToken.value = false
 
-  await router.replace({ name: 'agent-overview' })
+  await router.replace({ name: routeNames.agentOverview })
 }
 </script>
 
@@ -190,7 +192,7 @@ async function submit() {
           </p>
 
           <a
-            href="https://my.spacetraders.io/login"
+            :href="SPACE_TRADERS_PORTAL_URL"
             target="_blank"
             rel="noopener noreferrer"
             class="inline-block font-medium text-primary underline underline-offset-4"

@@ -9,6 +9,7 @@ import { Label } from '@/shared/components/ui/label'
 import { waypointsPageSizes, type WaypointsResponse } from '../schemas/waypoints.schema'
 import type { Waypoint } from '../schemas/waypoint.schema'
 import { formatLabel } from '@/shared/utils/formatters'
+import { routeNames } from '@/app/router/route-names'
 
 const props = defineProps<{
   response: WaypointsResponse
@@ -48,7 +49,7 @@ const router = useRouter()
 
 function viewWaypoint(waypoint: Waypoint) {
   return router.push({
-    name: 'waypoint-detail',
+    name: routeNames.waypointDetail,
     params: {
       systemSymbol: waypoint.systemSymbol,
       waypointSymbol: waypoint.symbol,

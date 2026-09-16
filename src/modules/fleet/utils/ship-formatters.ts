@@ -7,20 +7,17 @@ export function percentage(current: number, capacity: number): number {
     return 0
   }
 
-  return Math.min(Math.max(current / capacity, 0), 1)
+  return Math.min(Math.max((current / capacity) * 100, 0), 100)
 }
 
 export function formatDuration(seconds: number): string {
-  const minutes = Math.floor(seconds / 60)
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
   const remainingSeconds = seconds % 60
 
-  if (!minutes) {
-    return `${remainingSeconds}s`
-  }
-
-  if (!remainingSeconds) {
-    return `${minutes}m`
-  }
-
-  return `${minutes}m ${remainingSeconds}s`
+  const parts: string[] = []
+  if (hours) parts.push(`${hours}h`)
+  if (minutes) parts.push(`${minutes}m`)
+  if (!parts.length || remainingSeconds) parts.push(`${remainingSeconds}s`)
+  return parts.join(' ')
 }

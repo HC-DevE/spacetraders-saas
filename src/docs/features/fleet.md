@@ -41,23 +41,23 @@ ne sont pas implémentées.
 
 ## Responsabilités des fichiers
 
-| Fichier ou dossier               | Responsabilité                                             |
-| -------------------------------- | ---------------------------------------------------------- |
-| `api/ships.api.ts`               | Appels de liste et de détail, validation des réponses      |
-| `schemas/ship.schema.ts`         | Contrat d’un vaisseau et enveloppe de la réponse de détail |
-| `schemas/ships.schema.ts`        | Pagination, paramètres d’URL et réponse de liste           |
-| `composables/ship.keys.ts`       | Clés TanStack Query communes                               |
-| `composables/use-ships-query.ts` | Query paginée                                              |
-| `composables/use-ship-query.ts`  | Query d’un vaisseau                                        |
-| `pages/FleetPage.vue`            | Composition et états de la liste                           |
-| `pages/ShipDetailPage.vue`       | Composition et états de la fiche                           |
-| `components/ShipCard.vue`        | Résumé d’un vaisseau dans la liste                         |
-| `components/ship-detail/`        | Sections de la fiche détaillée                             |
-| `shared/utils/formatters.ts`     | Formatage générique des nombres, dates et libellés         |
-| `shared/schemas/trade-symbol.schema.ts` | Contrat `TradeSymbol` partagé avec Markets            |
-| `utils/ship-formatters.ts`       | Durées et pourcentages spécifiques aux vaisseaux           |
-| `utils/ship-status.ts`           | Libellés et couleurs des statuts                           |
-| `tests/`                         | Tests de parcours et de présentation                       |
+| Fichier ou dossier                      | Responsabilité                                             |
+| --------------------------------------- | ---------------------------------------------------------- |
+| `api/ships.api.ts`                      | Appels de liste et de détail, validation des réponses      |
+| `schemas/ship.schema.ts`                | Contrat d’un vaisseau et enveloppe de la réponse de détail |
+| `schemas/ships.schema.ts`               | Pagination, paramètres d’URL et réponse de liste           |
+| `composables/ship.keys.ts`              | Clés TanStack Query communes                               |
+| `composables/use-ships-query.ts`        | Query paginée                                              |
+| `composables/use-ship-query.ts`         | Query d’un vaisseau                                        |
+| `pages/FleetPage.vue`                   | Composition et états de la liste                           |
+| `pages/ShipDetailPage.vue`              | Composition et états de la fiche                           |
+| `components/ShipCard.vue`               | Résumé d’un vaisseau dans la liste                         |
+| `components/ship-detail/`               | Sections de la fiche détaillée                             |
+| `shared/utils/formatters.ts`            | Formatage générique des nombres, dates et libellés         |
+| `shared/schemas/trade-symbol.schema.ts` | Contrat `TradeSymbol` partagé avec Markets                 |
+| `utils/ship-formatters.ts`              | Durées et pourcentages spécifiques aux vaisseaux           |
+| `utils/ship-status.ts`                  | Libellés et couleurs des statuts                           |
+| `tests/`                                | Tests de parcours et de présentation                       |
 
 Les composants de détail reçoivent directement les données typées
 nécessaires à leur section.

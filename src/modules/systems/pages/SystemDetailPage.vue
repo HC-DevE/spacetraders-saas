@@ -15,6 +15,7 @@ import {
   waypointsSearchSchema,
   type WaypointsParams,
 } from '../schemas/waypoints.schema'
+import { routeNames } from '@/app/router/route-names.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -114,7 +115,7 @@ async function changeMarketplace(enabled: boolean) {
 <template>
   <section class="min-w-0 space-y-6 wrap-anywhere">
     <RouterLink
-      :to="{ name: 'systems' }"
+      :to="{ name: routeNames.systems }"
       aria-label="Back to systems"
       class="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline"
     >

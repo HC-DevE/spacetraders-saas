@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 
-import type { Ship } from '../../schemas/ship.schema'
+import type { Ship } from '@/modules/fleet/schemas/ship.schema'
 import { formatDate, formatLabel } from '@/shared/utils/formatters'
+import { routeNames } from '@/app/router/route-names'
 
 defineProps<{ nav: Ship['nav'] }>()
 </script>
@@ -25,7 +26,7 @@ defineProps<{ nav: Ship['nav'] }>()
         <dt class="text-sm text-muted-foreground">System</dt>
         <dd class="mt-1 font-medium">
           <RouterLink
-            :to="{ name: 'system-detail', params: { systemSymbol: nav.systemSymbol } }"
+            :to="{ name: routeNames.systemDetail, params: { systemSymbol: nav.systemSymbol } }"
             :aria-label="`Open system ${nav.systemSymbol}`"
             class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
@@ -39,7 +40,7 @@ defineProps<{ nav: Ship['nav'] }>()
         <dd class="mt-1 font-medium">
           <RouterLink
             :to="{
-              name: 'waypoint-detail',
+              name: routeNames.waypointDetail,
               params: {
                 systemSymbol: nav.systemSymbol,
                 waypointSymbol: nav.waypointSymbol,
@@ -66,7 +67,7 @@ defineProps<{ nav: Ship['nav'] }>()
           <p class="mt-2 font-semibold">
             <RouterLink
               :to="{
-                name: 'waypoint-detail',
+                name: routeNames.waypointDetail,
                 params: {
                   systemSymbol: nav.route.origin.systemSymbol,
                   waypointSymbol: nav.route.origin.symbol,
@@ -88,7 +89,7 @@ defineProps<{ nav: Ship['nav'] }>()
             System
             <RouterLink
               :to="{
-                name: 'system-detail',
+                name: routeNames.systemDetail,
                 params: { systemSymbol: nav.route.origin.systemSymbol },
               }"
               :aria-label="`Open origin system ${nav.route.origin.systemSymbol}`"
@@ -105,7 +106,7 @@ defineProps<{ nav: Ship['nav'] }>()
           <p class="mt-2 font-semibold">
             <RouterLink
               :to="{
-                name: 'waypoint-detail',
+                name: routeNames.waypointDetail,
                 params: {
                   systemSymbol: nav.route.destination.systemSymbol,
                   waypointSymbol: nav.route.destination.symbol,
@@ -127,7 +128,7 @@ defineProps<{ nav: Ship['nav'] }>()
             System
             <RouterLink
               :to="{
-                name: 'system-detail',
+                name: routeNames.systemDetail,
                 params: { systemSymbol: nav.route.destination.systemSymbol },
               }"
               :aria-label="`Open destination system ${nav.route.destination.systemSymbol}`"

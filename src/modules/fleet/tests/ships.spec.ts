@@ -12,6 +12,7 @@ import { createAppRouter } from '@/app/router'
 import { useAuthStore } from '@/modules/auth/auth.store'
 
 import { createShip } from './ship.fixture'
+import { routeNames } from '@/app/router/route-names'
 
 const endpoint = 'https://api.spacetraders.io/v2/my/ships'
 const server = setupServer()
@@ -344,7 +345,7 @@ describe('Fleet page', () => {
       await wrapper.get('[data-testid="logout"]').trigger('click')
 
       await vi.waitFor(() => {
-        expect(router.currentRoute.value.name).toBe('login')
+        expect(router.currentRoute.value.name).toBe(routeNames.login)
         expect(wrapper.find('#agent-token').exists()).toBe(true)
       })
 

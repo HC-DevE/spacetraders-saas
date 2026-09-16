@@ -8,6 +8,7 @@ import { formatDate, formatLabel, formatNumber } from '@/shared/utils/formatters
 import type { Ship } from '../schemas/ship.schema'
 import { percentage } from '../utils/ship-formatters'
 import { formatShipStatus } from '../utils/ship-status'
+import { routeNames } from '@/app/router/route-names'
 
 const props = defineProps<{ ship: Ship }>()
 const router = useRouter()
@@ -28,7 +29,7 @@ const displayedLocation = computed(() =>
 
 function viewDetails() {
   return router.push({
-    name: 'ship-detail',
+    name: routeNames.shipDetail,
     params: { symbol: props.ship.symbol },
   })
 }
@@ -95,7 +96,7 @@ function viewDetails() {
           <dd class="mt-1 text-sm font-medium">
             <RouterLink
               :to="{
-                name: 'system-detail',
+                name: routeNames.systemDetail,
                 params: { systemSymbol: displayedLocation.systemSymbol },
               }"
               :aria-label="`Open system ${displayedLocation.systemSymbol}`"
@@ -111,7 +112,7 @@ function viewDetails() {
           <dd class="mt-1 text-sm font-medium">
             <RouterLink
               :to="{
-                name: 'waypoint-detail',
+                name: routeNames.waypointDetail,
                 params: {
                   systemSymbol: displayedLocation.systemSymbol,
                   waypointSymbol: displayedLocation.waypointSymbol,

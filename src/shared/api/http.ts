@@ -1,11 +1,16 @@
 import axios from 'axios'
 import { z } from 'zod'
 
+import { SPACE_TRADERS_ERROR_CODES } from '@/config/space-traders'
+import { env } from '@/config/env'
+
 import { ApiError } from './api-error'
 
+const REQUEST_TIMEOUT_MS = 15_000
+
 const http = axios.create({
-  baseURL: 'https://api.spacetraders.io/v2',
-  timeout: 15_000,
+  baseURL: env.apiBaseUrl,
+  timeout: REQUEST_TIMEOUT_MS,
   headers: {
     Accept: 'application/json',
   },
@@ -34,11 +39,17 @@ function normalizeError(error: unknown): ApiError {
   }
 
   const status = error.response.status
-  const parsed = errorResponseSchema.safeParse(error.response.data)
-  const code = parsed.success ? parsed.data.error.code : undefined
-  const details = { status, code }
 
-  if (code === 4105) {
+  const parsed = errorResponseSchema.safeParse(error.response.data)
+
+  const code = parsed.success ? parsed.data.error.code : undefined
+
+  const details = {
+    status,
+    code,
+  }
+
+  if (code === SPACE_TRADERS_ERROR_CODES.wrongTokenType) {
     return new ApiError(
       'authentication',
       'This token has the wrong type. Use an agent token to connect.',

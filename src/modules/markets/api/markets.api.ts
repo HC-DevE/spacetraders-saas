@@ -1,4 +1,5 @@
 import { ApiError } from '@/shared/api/api-error'
+import { apiEndpoints } from '@/shared/api/endpoints'
 import { getJson } from '@/shared/api/http'
 
 import { marketResponseSchema, type Market } from '../schemas/market.schema'
@@ -10,7 +11,7 @@ export async function getMarket(
   signal?: AbortSignal,
 ): Promise<Market> {
   const response = await getJson(
-    `/systems/${encodeURIComponent(systemSymbol)}/waypoints/${encodeURIComponent(waypointSymbol)}/market`,
+    apiEndpoints.systems.waypoints.market(systemSymbol, waypointSymbol),
     token,
     signal,
   )

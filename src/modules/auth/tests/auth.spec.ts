@@ -12,6 +12,7 @@ import { createAppRouter } from '@/app/router'
 import { agentKeys } from '@/modules/agent/composables/use-agent-query'
 
 import { useAuthStore } from '../auth.store'
+import { routeNames } from '@/app/router/route-names'
 
 const endpoint = 'https://api.spacetraders.io/v2/my/agent'
 const storageKey = 'space-control.agent-token'
@@ -103,7 +104,7 @@ describe('Authentication flow', () => {
   it('protects the overview and rejects an empty token locally', async () => {
     const { wrapper, router } = await mountApplication('/')
 
-    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.name).toBe(routeNames.login)
 
     await wrapper.get('form').trigger('submit')
 
@@ -134,7 +135,7 @@ describe('Authentication flow', () => {
     await wrapper.get('[data-testid="logout"]').trigger('click')
 
     await vi.waitFor(() => {
-      expect(router.currentRoute.value.name).toBe('login')
+      expect(router.currentRoute.value.name).toBe(routeNames.login)
     })
 
     expect(auth.token).toBeNull()
@@ -156,7 +157,7 @@ describe('Authentication flow', () => {
 
     expect(auth.hasToken).toBe(false)
     expect(localStorage.getItem(storageKey)).toBeNull()
-    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.name).toBe(routeNames.login)
   })
 
   it('clears the request error when the token changes and allows another attempt', async () => {
@@ -206,7 +207,7 @@ describe('Authentication flow', () => {
     expect(auth.hasToken).toBe(false)
     expect(localStorage.getItem(storageKey)).toBeNull()
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
-    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.name).toBe(routeNames.login)
   })
 
   it('reports an offline failure without replaying the login on reconnection', async () => {
@@ -235,7 +236,7 @@ describe('Authentication flow', () => {
 
     expect(requestCount).toBe(1)
     expect(auth.hasToken).toBe(false)
-    expect(router.currentRoute.value.name).toBe('login')
+    expect(router.currentRoute.value.name).toBe(routeNames.login)
   })
 
   it('restores a token and fetches fresh agent information', async () => {
@@ -259,7 +260,7 @@ describe('Authentication flow', () => {
     const { auth, queryClient, router } = await mountApplication('/')
 
     await vi.waitFor(() => {
-      expect(router.currentRoute.value.name).toBe('login')
+      expect(router.currentRoute.value.name).toBe(routeNames.login)
     })
 
     expect(auth.hasToken).toBe(false)
@@ -285,7 +286,7 @@ describe('Authentication flow', () => {
     })
 
     await vi.waitFor(() => {
-      expect(router.currentRoute.value.name).toBe('login')
+      expect(router.currentRoute.value.name).toBe(routeNames.login)
     })
 
     expect(auth.hasToken).toBe(false)

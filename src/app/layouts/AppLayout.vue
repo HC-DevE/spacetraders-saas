@@ -5,20 +5,23 @@ import { RouterLink, RouterView, useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/modules/auth/auth.store'
 import AppButton from '@/shared/components/AppButton.vue'
 import { useAuth } from '@/modules/auth/composables/use-auth'
+import { routeNames } from '@/app/router/route-names'
 
 const auth = useAuthStore()
 const { logout } = useAuth()
 const route = useRoute()
 const router = useRouter()
 
-const isFleetSection = computed(() => route.name === 'fleet' || route.name === 'ship-detail')
-const isSystemsSection = computed(() => route.path.startsWith('/systems'))
+const isFleetSection = computed(
+  () => route.name === routeNames.fleet || route.name === routeNames.shipDetail,
+)
+const isSystemsSection = computed(() => route.path.startsWith('/systems')) //TODO
 
 watch(
   () => auth.hasToken,
   (hasToken) => {
     if (!hasToken) {
-      void router.replace({ name: 'login' })
+      void router.replace({ name: routeNames.login })
     }
   },
 )
@@ -36,7 +39,7 @@ watch(
     <header class="border-b bg-card">
       <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
         <RouterLink
-          :to="{ name: 'agent-overview' }"
+          :to="{ name: routeNames.agentOverview }"
           class="flex items-center gap-3 rounded-sm font-semibold"
         >
           <!-- <span
@@ -53,7 +56,7 @@ watch(
 
       <nav aria-label="Main navigation" class="mx-auto flex max-w-6xl gap-2 px-4 pb-3 sm:px-6">
         <RouterLink
-          :to="{ name: 'agent-overview' }"
+          :to="{ name: routeNames.agentOverview }"
           class="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
           exact-active-class="bg-secondary text-secondary-foreground"
         >
@@ -61,18 +64,18 @@ watch(
         </RouterLink>
 
         <RouterLink
-          :to="{ name: 'fleet' }"
+          :to="{ name: routeNames.fleet }"
           class="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
           :class="{ 'bg-secondary text-secondary-foreground': isFleetSection }"
           :aria-current="
-            isFleetSection ? (route.name === 'fleet' ? 'page' : 'location') : undefined
+            isFleetSection ? (route.name === routeNames.fleet ? 'page' : 'location') : undefined
           "
         >
           Fleet
         </RouterLink>
 
         <RouterLink
-          :to="{ name: 'systems' }"
+          :to="{ name: routeNames.systems }"
           class="rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
           :class="{
             'bg-secondary text-secondary-foreground': isSystemsSection,

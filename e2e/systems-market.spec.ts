@@ -1,11 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
+import { SPACE_TRADERS_DEFAULT_API_BASE_URL } from '../src/config/space-traders'
 
-const API = 'https://api.spacetraders.io/v2'
+const API_URL = SPACE_TRADERS_DEFAULT_API_BASE_URL
 
 const TOKEN = 'e2e-systems-market-token'
 
 async function mockSystemsMarketApi(page: Page) {
-  await page.route(`${API}/my/agent`, async (route) => {
+  await page.route(`${API_URL}/my/agent`, async (route) => {
     expect(route.request().headers().authorization).toBe(`Bearer ${TOKEN}`)
 
     await route.fulfill({
@@ -24,7 +25,7 @@ async function mockSystemsMarketApi(page: Page) {
     })
   })
 
-  await page.route(`${API}/systems?*`, async (route) => {
+  await page.route(`${API_URL}/systems?*`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -64,7 +65,7 @@ async function mockSystemsMarketApi(page: Page) {
     })
   })
 
-  await page.route(`${API}/systems/X1-TEST`, async (route) => {
+  await page.route(`${API_URL}/systems/X1-TEST`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -97,7 +98,7 @@ async function mockSystemsMarketApi(page: Page) {
     })
   })
 
-  await page.route(`${API}/systems/X1-TEST/waypoints?*`, async (route) => {
+  await page.route(`${API_URL}/systems/X1-TEST/waypoints?*`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -148,7 +149,7 @@ async function mockSystemsMarketApi(page: Page) {
     })
   })
 
-  await page.route(`${API}/systems/X1-TEST/waypoints/X1-TEST-A1`, async (route) => {
+  await page.route(`${API_URL}/systems/X1-TEST/waypoints/X1-TEST-A1`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
@@ -191,7 +192,7 @@ async function mockSystemsMarketApi(page: Page) {
     })
   })
 
-  await page.route(`${API}/systems/X1-TEST/waypoints/X1-TEST-A1/market`, async (route) => {
+  await page.route(`${API_URL}/systems/X1-TEST/waypoints/X1-TEST-A1/market`, async (route) => {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',

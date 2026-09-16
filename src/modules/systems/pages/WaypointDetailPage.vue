@@ -9,6 +9,7 @@ import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
 import WaypointOverview from '../components/WaypointOverview.vue'
 import { useWaypointQuery } from '../composables/use-waypoint-query'
 import { hasWaypointTrait } from '../utils/waypoint-status'
+import { routeNames } from '@/app/router/route-names.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,7 +20,7 @@ const hasMarketplace = computed(() =>
 
 function openMarket() {
   return router.push({
-    name: 'market',
+    name: routeNames.market,
     params: {
       systemSymbol: systemSymbol.value,
       waypointSymbol: waypointSymbol.value,
@@ -51,7 +52,7 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
   <section class="min-w-0 space-y-6 wrap-anywhere">
     <RouterLink
       :to="{
-        name: 'system-detail',
+        name: routeNames.systemDetail,
         params: {
           systemSymbol,
         },
