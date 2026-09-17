@@ -2,17 +2,21 @@ import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
 const TOKEN_STORAGE_KEY = 'space-control.agent-token'
+const AGENT_SYMBOL_STORAGE_KEY = 'space-control.agent-symbol'
 
-function readToken(): string | null {
+function readStorage(key: string): string | null {
   try {
-    return localStorage.getItem(TOKEN_STORAGE_KEY)?.trim() || null
+    return localStorage.getItem(key)?.trim() || null
   } catch {
     return null
   }
 }
 
 export const useAuthStore = defineStore('auth', () => {
-  const token = ref<string | null>(readToken())
+  const token = ref<string | null>(readStorage(TOKEN_STORAGE_KEY))
+
+  const agentSymbol = ref<string | null>(token.value ? readStorage(AGENT_SYMBOL_STORAGE_KEY) : null)
+
   const hasToken = computed(() => Boolean(token.value))
 
   function setToken(value: string) {
@@ -25,15 +29,49 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = value
   }
 
-  function clearToken() {
+  function setAgentSymbol(value: string) {
+    agentSymbol.value = value
+
     try {
-      localStorage.removeItem(TOKEN_STORAGE_KEY)
-    } finally {
-      token.value = null
+      localStorage.setItem(AGENT_SYMBOL_STORAGE_KEY, value)
+    } catch {
+      // Agent identity is display metadata.
+      // A storage failure must not invalidate
+      // an otherwise valid authenticated session.
     }
   }
 
-  return { token, hasToken, setToken, clearToken }
+  function clearToken() {
+    let storageError: unknown
+
+    try {
+      localStorage.removeItem(TOKEN_STORAGE_KEY)
+    } catch (error) {
+      storageError = error
+    }
+
+    try {
+      localStorage.removeItem(AGENT_SYMBOL_STORAGE_KEY)
+    } catch (error) {
+      storageError ??= error
+    }
+
+    token.value = null
+    agentSymbol.value = null
+
+    if (storageError) {
+      throw storageError
+    }
+  }
+
+  return {
+    token,
+    agentSymbol,
+    hasToken,
+    setToken,
+    setAgentSymbol,
+    clearToken,
+  }
 })
 
 export type AuthStore = ReturnType<typeof useAuthStore>

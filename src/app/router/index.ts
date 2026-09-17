@@ -3,6 +3,7 @@ import { createRouter, createWebHistory, type RouterHistory, type RouteRecordRaw
 import type { AuthStore } from '@/modules/auth/auth.store'
 
 import { routeNames } from './route-names'
+import { navigationSections } from '@/app/navigation/main-navigation'
 
 export function createAppRouter(
   auth: AuthStore,
@@ -27,42 +28,59 @@ export function createAppRouter(
           path: '',
           name: routeNames.agentOverview,
           component: () => import('@/modules/agent/pages/AgentOverviewPage.vue'),
+          meta: {
+            navigationSection: navigationSections.overview,
+          },
         },
 
         {
           path: 'fleet',
           name: routeNames.fleet,
           component: () => import('@/modules/fleet/pages/FleetPage.vue'),
+          meta: {
+            navigationSection: navigationSections.fleet,
+          },
         },
-
         {
           path: 'fleet/:symbol',
           name: routeNames.shipDetail,
           component: () => import('@/modules/fleet/pages/ShipDetailPage.vue'),
+          meta: {
+            navigationSection: navigationSections.fleet,
+          },
         },
 
         {
           path: 'systems',
           name: routeNames.systems,
           component: () => import('@/modules/systems/pages/SystemsPage.vue'),
+          meta: {
+            navigationSection: navigationSections.systems,
+          },
         },
-
         {
           path: 'systems/:systemSymbol',
           name: routeNames.systemDetail,
           component: () => import('@/modules/systems/pages/SystemDetailPage.vue'),
+          meta: {
+            navigationSection: navigationSections.systems,
+          },
         },
-
         {
           path: 'systems/:systemSymbol/waypoints/:waypointSymbol',
           name: routeNames.waypointDetail,
           component: () => import('@/modules/systems/pages/WaypointDetailPage.vue'),
+          meta: {
+            navigationSection: navigationSections.systems,
+          },
         },
-
         {
           path: 'systems/:systemSymbol/waypoints/:waypointSymbol/market',
           name: routeNames.market,
           component: () => import('@/modules/markets/pages/MarketPage.vue'),
+          meta: {
+            navigationSection: navigationSections.systems,
+          },
         },
       ],
     },

@@ -7,6 +7,7 @@ import { useAuthStore, type AuthStore } from '@/modules/auth/auth.store'
 import { ApiError } from '@/shared/api/api-error'
 
 const storageKey = 'space-control.agent-token'
+const agentSymbolStorageKey = 'space-control.agent-symbol'
 
 let auth: AuthStore
 let queryClient: QueryClient
@@ -44,6 +45,26 @@ describe('Token storage and authentication errors', () => {
 
     expect(restoredAuth.token).toBe('saved-token')
     expect(restoredAuth.hasToken).toBe(true)
+  })
+
+  it('persists the current agent identity', () => {
+    auth.setToken('saved-token')
+    auth.setAgentSymbol('VOYAGER_7')
+
+    expect(auth.agentSymbol).toBe('VOYAGER_7')
+
+    expect(localStorage.getItem(agentSymbolStorageKey)).toBe('VOYAGER_7')
+  })
+
+  it('restores the agent identity with the saved token', () => {
+    auth.setToken('saved-token')
+    auth.setAgentSymbol('VOYAGER_7')
+
+    const restoredAuth = useAuthStore(createPinia())
+
+    expect(restoredAuth.token).toBe('saved-token')
+
+    expect(restoredAuth.agentSymbol).toBe('VOYAGER_7')
   })
 
   it('starts without a token when reading storage fails', () => {
@@ -108,5 +129,29 @@ describe('Token storage and authentication errors', () => {
 
     expect(auth.token).toBe('valid-token')
     expect(localStorage.getItem(storageKey)).toBe('valid-token')
+  })
+
+  it('removes the agent identity when the token is cleared', () => {
+    auth.setToken('saved-token')
+    auth.setAgentSymbol('VOYAGER_7')
+
+    auth.clearToken()
+
+    expect(auth.token).toBeNull()
+    expect(auth.agentSymbol).toBeNull()
+
+    expect(localStorage.getItem(storageKey)).toBeNull()
+
+    expect(localStorage.getItem(agentSymbolStorageKey)).toBeNull()
+  })
+
+  it('does not restore an agent identity without a token', () => {
+    localStorage.setItem(agentSymbolStorageKey, 'OLD-AGENT')
+
+    const restoredAuth = useAuthStore(createPinia())
+
+    expect(restoredAuth.token).toBeNull()
+    expect(restoredAuth.agentSymbol).toBeNull()
+    expect(restoredAuth.hasToken).toBe(false)
   })
 })

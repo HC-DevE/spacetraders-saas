@@ -130,6 +130,8 @@ describe('Authentication flow', () => {
     expect(requestCount).toBe(1)
     expect(localStorage.getItem(storageKey)).toBe('test-agent-token')
     expect(queryClient.getQueryData(agentKeys.current())).toEqual(agent)
+    expect(auth.agentSymbol).toBe(agent.symbol)
+    expect(localStorage.getItem('space-control.agent-symbol')).toBe(agent.symbol)
     expect(queryClient.getQueryData(['ships', 'detail', 'OLD-1'])).toBeUndefined()
 
     await wrapper.get('[data-testid="logout"]').trigger('click')
@@ -141,6 +143,8 @@ describe('Authentication flow', () => {
     expect(auth.token).toBeNull()
     expect(localStorage.getItem(storageKey)).toBeNull()
     expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
+    expect(auth.agentSymbol).toBeNull()
+    expect(localStorage.getItem('space-control.agent-symbol')).toBeNull()
   })
 
   it('keeps the user on login when the candidate token is rejected', async () => {

@@ -17,6 +17,7 @@ export function useLogin() {
 
     onSuccess: (agent, token) => {
       auth.setToken(token)
+      auth.setAgentSymbol(agent.symbol)
       queryClient.removeQueries()
       queryClient.setQueryData(agentKeys.current(), agent)
     },
