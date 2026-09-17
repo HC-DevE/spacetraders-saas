@@ -14,24 +14,29 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <header class="border-b bg-card">
-    <div class="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
-      <RouterLink :to="{ name: routeNames.agentOverview }" class="min-w-0 rounded-sm font-semibold">
-        Space Control
+  <header class="border-b border-border bg-background">
+    <div class="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
+      <RouterLink
+        :to="{ name: routeNames.agentOverview }"
+        class="flex min-w-0 items-center gap-2.5 rounded-sm text-sm font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+      >
+        <img src="/favicon.jpg" alt="" class="size-8 rounded-md object-cover" aria-hidden="true" />
+        <span class="truncate"> Space Control </span>
+        <!-- <span class="font-semibold tracking-tight"> Space Control </span> -->
       </RouterLink>
 
-      <div class="flex min-w-0 items-center gap-3">
-        <div v-if="agentSymbol" class="min-w-0 text-right">
-          <p class="text-xs text-muted-foreground">Agent</p>
-
-          <p class="max-w-40 truncate text-sm font-medium" :title="agentSymbol">
-            {{ agentSymbol }}
-          </p>
-        </div>
+      <div class="flex min-w-0 items-center gap-3 sm:gap-4">
+        <span
+          v-if="agentSymbol"
+          class="hidden max-w-48 truncate font-mono text-sm text-muted-foreground sm:block"
+          :title="agentSymbol"
+        >
+          {{ agentSymbol }}
+        </span>
 
         <AppButton
-          variant="destructive"
-          class="shrink-0"
+          variant="outline"
+          class="h-8 shrink-0 px-3 text-xs sm:px-4"
           data-testid="logout"
           @click="emit('signOut')"
         >
