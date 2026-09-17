@@ -12,13 +12,19 @@ import { createAppRouter } from '@/app/router'
 import { useAuthStore } from '@/modules/auth/auth.store'
 
 import { createSystem } from './system.fixture'
-import { routeNames } from '@/app/router/route-names'
 
 const endpoint = 'https://api.spacetraders.io/v2/systems'
+
+const systemsRowsSelector = 'table[aria-label="Systems"] tbody tr'
+
 const server = setupServer()
 
-let systems = Array.from({ length: 11 }, (_, index) =>
-  createSystem(`X1-TEST-${String(index + 1).padStart(2, '0')}`, index === 1 ? 'nebula' : 'star'),
+let systems = Array.from(
+  {
+    length: 11,
+  },
+  (_, index) =>
+    createSystem(`X1-TEST-${String(index + 1).padStart(2, '0')}`, index === 1 ? 'nebula' : 'star'),
 )
 
 let requests: Array<{
@@ -30,21 +36,33 @@ let requests: Array<{
 let cleanup: (() => void) | undefined
 
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' })
+  server.listen({
+    onUnhandledRequest: 'error',
+  })
 })
 
 beforeEach(() => {
   localStorage.clear()
+
   requests = []
 
-  systems = Array.from({ length: 11 }, (_, index) =>
-    createSystem(`X1-TEST-${String(index + 1).padStart(2, '0')}`, index === 1 ? 'nebula' : 'star'),
+  systems = Array.from(
+    {
+      length: 11,
+    },
+    (_, index) =>
+      createSystem(
+        `X1-TEST-${String(index + 1).padStart(2, '0')}`,
+        index === 1 ? 'nebula' : 'star',
+      ),
   )
 
   server.use(
     http.get(endpoint, ({ request }) => {
       const url = new URL(request.url)
+
       const page = Number(url.searchParams.get('page'))
+
       const limit = Number(url.searchParams.get('limit'))
 
       requests.push({
@@ -57,6 +75,7 @@ beforeEach(() => {
 
       return HttpResponse.json({
         data: systems.slice(start, start + limit),
+
         meta: {
           page,
           limit,
@@ -81,11 +100,13 @@ afterAll(() => {
 
 async function mountSystems(path = '/systems') {
   const pinia = createPinia()
+
   const auth = useAuthStore(pinia)
 
   auth.setToken('systems-test-token')
 
   const queryClient = createQueryClient(auth)
+
   const router = createAppRouter(auth, createMemoryHistory())
 
   await router.push(path)
@@ -93,7 +114,16 @@ async function mountSystems(path = '/systems') {
 
   const wrapper = mount(App, {
     global: {
-      plugins: [pinia, [VueQueryPlugin, { queryClient }], router],
+      plugins: [
+        pinia,
+        [
+          VueQueryPlugin,
+          {
+            queryClient,
+          },
+        ],
+        router,
+      ],
     },
   })
 
@@ -117,7 +147,7 @@ describe('Systems page', () => {
     const { wrapper } = await mountSystems('/systems?page=abc&limit=999')
 
     await vi.waitFor(() => {
-      expect(wrapper.findAll('article')).toHaveLength(10)
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
     })
 
     expect(requests).toEqual([
@@ -129,15 +159,19 @@ describe('Systems page', () => {
     ])
 
     expect(wrapper.text()).toContain('X1-TEST-01')
+
     expect(wrapper.text()).toContain('X1-TEST-10')
+
     expect(wrapper.text()).not.toContain('X1-TEST-11')
 
     expect(wrapper.text()).toContain('Coordinates')
+
     expect(wrapper.text()).toContain('Waypoints')
 
     const systemsLink = wrapper.get('nav[aria-label="Main navigation"] a[href="/systems"]')
 
     expect(systemsLink.text()).toBe('Systems')
+
     expect(systemsLink.attributes('aria-current')).toBe('page')
   })
 
@@ -145,32 +179,49 @@ describe('Systems page', () => {
     const { wrapper, router } = await mountSystems('/systems?limit=10')
 
     await vi.waitFor(() => {
-      expect(wrapper.findAll('article')).toHaveLength(10)
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
     })
 
     await wrapper.get('button[aria-label="Next systems page"]').trigger('click')
 
     await vi.waitFor(() => {
       expect(router.currentRoute.value.query.page).toBe('2')
+
       expect(wrapper.text()).toContain('X1-TEST-11')
     })
 
-    expect(wrapper.findAll('article')).toHaveLength(1)
+    expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(1)
+
     expect(wrapper.text()).not.toContain('X1-TEST-01')
 
     await wrapper.get('#systems-limit').setValue('20')
 
     await vi.waitFor(() => {
-      expect(wrapper.findAll('article')).toHaveLength(11)
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(11)
     })
 
     expect(router.currentRoute.value.query.page).toBe('1')
+
     expect(router.currentRoute.value.query.limit).toBe('20')
 
-    expect(requests.map(({ page, limit }) => ({ page, limit }))).toEqual([
-      { page: 1, limit: 10 },
-      { page: 2, limit: 10 },
-      { page: 1, limit: 20 },
+    expect(
+      requests.map(({ page, limit }) => ({
+        page,
+        limit,
+      })),
+    ).toEqual([
+      {
+        page: 1,
+        limit: 10,
+      },
+      {
+        page: 2,
+        limit: 10,
+      },
+      {
+        page: 1,
+        limit: 20,
+      },
     ])
   })
 
@@ -179,6 +230,7 @@ describe('Systems page', () => {
       http.get(endpoint, () =>
         HttpResponse.json({
           data: [],
+
           meta: {
             page: 1,
             limit: 10,
@@ -194,7 +246,7 @@ describe('Systems page', () => {
       expect(wrapper.text()).toContain('No systems available')
     })
 
-    expect(wrapper.findAll('article')).toHaveLength(0)
+    expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(0)
 
     expect(wrapper.find('nav[aria-label="Systems pagination"]').exists()).toBe(false)
   })
@@ -206,12 +258,13 @@ describe('Systems page', () => {
       expect(wrapper.text()).toContain('No systems on this page')
     })
 
-    expect(wrapper.findAll('article')).toHaveLength(0)
+    expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(0)
 
     await wrapper.get('button[aria-label="Return to first systems page"]').trigger('click')
 
     await vi.waitFor(() => {
-      expect(wrapper.findAll('article')).toHaveLength(10)
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
+
       expect(wrapper.text()).toContain('X1-TEST-01')
     })
 
@@ -240,6 +293,7 @@ describe('Systems page', () => {
       http.get(endpoint, () =>
         HttpResponse.json({
           data: [invalidSystem],
+
           meta: {
             page: 1,
             limit: 10,
@@ -256,7 +310,8 @@ describe('Systems page', () => {
     })
 
     expect(wrapper.text()).not.toContain('No systems available')
-    expect(wrapper.findAll('article')).toHaveLength(0)
+
+    expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(0)
   })
 
   it('rejects a response whose pagination does not match the requested page', async () => {
@@ -264,6 +319,7 @@ describe('Systems page', () => {
       http.get(endpoint, () =>
         HttpResponse.json({
           data: [createSystem('X1-WRONG-PAGE')],
+
           meta: {
             page: 2,
             limit: 10,
@@ -286,7 +342,7 @@ describe('Systems page', () => {
     const { wrapper } = await mountSystems()
 
     await vi.waitFor(() => {
-      expect(wrapper.findAll('article')).toHaveLength(10)
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
     })
 
     server.use(
@@ -311,8 +367,10 @@ describe('Systems page', () => {
       expect(wrapper.get('[role="alert"]').text()).toContain('Could not refresh systems')
     })
 
-    expect(wrapper.findAll('article')).toHaveLength(10)
+    expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
+
     expect(wrapper.text()).toContain('X1-TEST-01')
+
     expect(wrapper.text()).toContain('X1-TEST-10')
   })
 
@@ -320,12 +378,13 @@ describe('Systems page', () => {
     const { wrapper, router, queryClient } = await mountSystems()
 
     await vi.waitFor(() => {
-      expect(wrapper.findAll('article')).toHaveLength(10)
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
     })
 
     expect(wrapper.text()).toContain('X1-TEST-01')
 
     let releaseResponse: (() => void) | undefined
+
     let authorization: string | null = null
 
     const responseGate = new Promise<void>((resolve) => {
@@ -340,6 +399,7 @@ describe('Systems page', () => {
 
         return HttpResponse.json({
           data: [createSystem('X1-OTHER')],
+
           meta: {
             page: 1,
             limit: 10,
@@ -367,13 +427,15 @@ describe('Systems page', () => {
       await wrapper.get('[data-testid="logout"]').trigger('click')
 
       await vi.waitFor(() => {
-        expect(router.currentRoute.value.name).toBe(routeNames.login)
+        expect(router.currentRoute.value.name).toBe('login')
+
         expect(wrapper.find('#agent-token').exists()).toBe(true)
       })
 
       expect(queryClient.getQueryCache().getAll()).toHaveLength(0)
 
       await wrapper.get('#agent-token').setValue('other-agent-token')
+
       await wrapper.get('form').trigger('submit')
 
       await vi.waitFor(() => {
@@ -386,7 +448,8 @@ describe('Systems page', () => {
         expect(authorization).toBe('Bearer other-agent-token')
       })
 
-      expect(wrapper.findAll('article')).toHaveLength(0)
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(0)
+
       expect(wrapper.text()).not.toContain('X1-TEST-01')
 
       releaseResponse?.()
@@ -395,15 +458,19 @@ describe('Systems page', () => {
         expect(wrapper.text()).toContain('X1-OTHER')
       })
 
-      expect(wrapper.findAll('article')).toHaveLength(1)
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(1)
+
       expect(wrapper.text()).not.toContain('X1-TEST-01')
+
       expect(wrapper.text()).not.toContain('X1-TEST-10')
     } finally {
       releaseResponse?.()
     }
   })
-  it('opens the selected system details', async () => {
+
+  it('opens the selected system details from the system title', async () => {
     let requestedSymbol: string | undefined
+
     let authorization: string | null = null
 
     server.use(
@@ -420,6 +487,7 @@ describe('Systems page', () => {
       http.get('https://api.spacetraders.io/v2/systems/:systemSymbol/waypoints', () =>
         HttpResponse.json({
           data: [],
+
           meta: {
             page: 1,
             limit: 10,
@@ -432,16 +500,14 @@ describe('Systems page', () => {
     const { wrapper, router } = await mountSystems()
 
     await vi.waitFor(() => {
-      expect(wrapper.find('button[aria-label="View system X1-TEST-01"]').exists()).toBe(true)
+      expect(wrapper.find('a[aria-label="Open system X1-TEST-01"]').exists()).toBe(true)
     })
 
-    const detailsButton = wrapper.get<HTMLButtonElement>(
-      'button[aria-label="View system X1-TEST-01"]',
-    )
+    const systemLink = wrapper.get<HTMLAnchorElement>('a[aria-label="Open system X1-TEST-01"]')
 
-    expect(detailsButton.attributes('type')).toBe('button')
+    expect(systemLink.attributes('href')).toBe('/systems/X1-TEST-01')
 
-    await detailsButton.trigger('click')
+    await systemLink.trigger('click')
 
     await vi.waitFor(() => {
       expect(router.currentRoute.value.name).toBe('system-detail')
