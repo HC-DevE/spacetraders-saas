@@ -2,9 +2,11 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
+import { routeNames } from '@/app/router/route-names'
 import { ApiError } from '@/shared/api/api-error'
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
+import { formatDate, formatLabel } from '@/shared/utils/formatters'
 
 import ShipCargo from '../components/ship-detail/ShipCargo.vue'
 import ShipCooldown from '../components/ship-detail/ShipCooldown.vue'
@@ -16,8 +18,6 @@ import ShipNavigation from '../components/ship-detail/ShipNavigation.vue'
 import ShipResources from '../components/ship-detail/ShipResources.vue'
 import { useShipQuery } from '../composables/use-ship-query'
 import { formatShipStatus } from '../utils/ship-status'
-import { formatDate, formatLabel } from '@/shared/utils/formatters.ts'
-import { routeNames } from '@/app/router/route-names'
 
 const route = useRoute()
 
@@ -43,26 +43,28 @@ const status = computed(() => formatShipStatus(ship.value?.nav.status))
     <RouterLink
       :to="{ name: routeNames.fleet }"
       aria-label="Back to fleet"
-      class="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline"
+      class="inline-flex items-center gap-2 rounded-sm text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span aria-hidden="true">←</span>
       Back to fleet
     </RouterLink>
 
-    <header class="flex flex-wrap items-start justify-between gap-4">
+    <header class="flex flex-wrap items-start justify-between gap-5 border-b border-border pb-5">
       <div class="min-w-0">
-        <p class="text-sm font-medium text-muted-foreground">Ship details</p>
+        <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Ship</p>
 
-        <div class="mt-1 flex flex-wrap items-center gap-3">
-          <h1 class="min-w-0 text-2xl font-semibold tracking-tight">
+        <div class="mt-2 flex flex-wrap items-center gap-3">
+          <h1 class="min-w-0 font-mono text-2xl font-semibold tracking-tight">
             {{ ship?.registration.name || symbol }}
           </h1>
 
           <span
             v-if="ship"
-            class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold"
+            class="inline-flex shrink-0 items-center gap-2 text-sm font-medium"
             :class="status.className"
           >
+            <span class="size-1.5 rounded-full bg-current" aria-hidden="true" />
+
             {{ status.label }}
           </span>
         </div>
@@ -70,36 +72,41 @@ const status = computed(() => formatShipStatus(ship.value?.nav.status))
         <template v-if="ship">
           <p
             v-if="ship.registration.name !== ship.symbol"
-            class="mt-1 text-sm text-muted-foreground"
+            class="mt-1 font-mono text-xs text-muted-foreground"
           >
             {{ ship.symbol }}
           </p>
 
-          <p class="mt-2 text-sm text-muted-foreground">
-            {{ ship.frame.name }}
-            <span aria-hidden="true"> · </span>
+          <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span>
+              {{ ship.frame.name }}
+            </span>
+
             <span class="capitalize">
               {{ formatLabel(ship.registration.role) }}
             </span>
-            <span aria-hidden="true"> · </span>
-            {{ ship.registration.factionSymbol }}
-          </p>
+
+            <span class="font-mono">
+              {{ ship.registration.factionSymbol }}
+            </span>
+          </div>
         </template>
       </div>
 
-      <div v-if="ship" class="min-w-0 space-y-2 sm:text-right">
+      <div v-if="ship" class="flex flex-col items-start gap-2 sm:items-end">
         <AppButton
           variant="outline"
+          class="h-8 px-3 text-xs"
           aria-label="Refresh ship"
           :loading="isFetching"
           :disabled="isPaused"
           loading-label="Refreshing…"
           @click="refetch()"
         >
-          Refresh ship
+          Refresh
         </AppButton>
 
-        <p v-if="dataUpdatedAt > 0" class="text-xs text-muted-foreground">
+        <p v-if="dataUpdatedAt > 0" class="font-mono text-xs text-muted-foreground">
           Updated {{ formatDate(dataUpdatedAt) }}
         </p>
       </div>
@@ -127,10 +134,14 @@ const status = computed(() => formatShipStatus(ship.value?.nav.status))
       <div
         v-if="error"
         role="alert"
-        class="rounded-xl border border-warning/30 bg-warning-subtle p-4 text-warning"
+        class="border border-warning/30 bg-warning-subtle p-4 text-warning"
       >
-        <p class="font-semibold">Could not refresh ship</p>
-        <p class="mt-1 text-sm">{{ error.message }}</p>
+        <p class="font-medium">Could not refresh ship</p>
+
+        <p class="mt-1 text-sm">
+          {{ error.message }}
+        </p>
+
         <p class="mt-2 text-sm">The last successfully loaded information is still displayed.</p>
       </div>
 
@@ -142,18 +153,23 @@ const status = computed(() => formatShipStatus(ship.value?.nav.status))
         Updating ship information…
       </p>
 
-      <div :aria-busy="isFetching" class="space-y-6">
+      <div :aria-busy="isFetching" class="space-y-8">
         <ShipResources :fuel="ship.fuel" :cargo="ship.cargo" :crew="ship.crew" />
+
         <ShipNavigation :nav="ship.nav" />
 
-        <div class="grid gap-6 md:grid-cols-2">
+        <div class="grid gap-4 md:grid-cols-2">
           <ShipCrew :crew="ship.crew" />
+
           <ShipCooldown :cooldown="ship.cooldown" />
         </div>
 
         <ShipCargo :cargo="ship.cargo" :ship-symbol="ship.symbol" />
+
         <ShipEquipment :frame="ship.frame" :reactor="ship.reactor" :engine="ship.engine" />
+
         <ShipModules :modules="ship.modules" />
+
         <ShipMounts :mounts="ship.mounts" />
       </div>
     </template>
