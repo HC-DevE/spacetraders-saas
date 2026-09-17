@@ -4,6 +4,8 @@ import { RouterLink } from 'vue-router'
 import { routeNames } from '@/app/router/route-names'
 import AppButton from '@/shared/components/AppButton.vue'
 
+const logoUrl = `${import.meta.env.BASE_URL}favicon.jpg`
+
 defineProps<{
   agentSymbol?: string
 }>()
@@ -20,7 +22,7 @@ const emit = defineEmits<{
         :to="{ name: routeNames.agentOverview }"
         class="flex min-w-0 items-center gap-2.5 rounded-sm text-sm font-semibold text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
       >
-        <img src="/favicon.jpg" alt="" class="size-8 rounded-md object-cover" aria-hidden="true" />
+        <img :src="logoUrl" alt="" class="size-8 rounded-md object-cover" aria-hidden="true" />
         <span class="truncate"> Space Control </span>
         <!-- <span class="font-semibold tracking-tight"> Space Control </span> -->
       </RouterLink>
