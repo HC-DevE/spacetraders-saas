@@ -1,12 +1,32 @@
 # Markets
 
+## Objectif
+
 Le module `markets` permet de consulter les ressources et les informations commerciales d’un marché SpaceTraders associé à un waypoint.
 
-Le endpoint API est imbriqué sous `/systems/...`, mais le module reste séparé de `systems` car sa responsabilité fonctionnelle est commerciale : ressources, prix et transactions.
+L’endpoint API est techniquement imbriqué sous :
 
-Cette première version est volontairement consultative. Elle n’implémente ni achat ni vente.
+```text
+/systems/{systemSymbol}/waypoints/{waypointSymbol}/market
+```
 
-## Périmètre
+mais le module reste séparé de `systems` car sa responsabilité fonctionnelle est différente :
+
+```text
+Systems
+→ exploration spatiale
+
+Markets
+→ ressources, prix et transactions
+```
+
+La version actuelle est volontairement consultative.
+
+Elle n’implémente ni achat ni vente.
+
+---
+
+# Périmètre
 
 La page :
 
@@ -14,336 +34,1528 @@ La page :
 /systems/:systemSymbol/waypoints/:waypointSymbol/market
 ```
 
-présente trois niveaux d’information.
-
-### Ressources structurelles
-
-Toujours représentées par le contrat Market :
-
-- `exports` ;
-- `imports` ;
-- `exchange`.
-
-Elles décrivent les ressources associées au marché indépendamment de la disponibilité des prix détaillés.
-
-### Prix détaillés
-
-Lorsque `tradeGoods` est fourni, l’interface affiche une table contenant :
-
-- la ressource ;
-- son type (`EXPORT`, `IMPORT`, `EXCHANGE`) ;
-- le niveau de supply ;
-- l’activité lorsqu’elle est fournie ;
-- le volume ;
-- le prix d’achat ;
-- le prix de vente.
-
-`activity` est facultatif et est affiché comme `Not reported` lorsqu’il est absent.
-
-### Transactions récentes
-
-Lorsque `transactions` est fourni, l’interface affiche :
-
-- la ressource ;
-- le type de transaction ;
-- le symbole du vaisseau ;
-- les unités ;
-- le prix unitaire ;
-- le total ;
-- la date UTC.
-
-Le symbole du vaisseau n’est pas transformé automatiquement en lien vers Fleet : une transaction de marché ne garantit pas que le vaisseau appartient à l’agent courant.
-
-## Données détaillées indisponibles
-
-`tradeGoods` et `transactions` sont facultatifs dans le contrat.
-
-L’interface distingue donc trois situations :
+présente trois catégories principales d’information :
 
 ```text
-champ absent
-→ information détaillée indisponible
-
-champ présent mais []
-→ information disponible, aucun élément retourné
-
-champ présent avec des éléments
-→ affichage de la table
+Market
+├── Resources
+├── Trade prices
+└── Recent transactions
 ```
 
-L’absence de `tradeGoods` ne devient jamais :
+Ces trois catégories n’ont pas les mêmes garanties de disponibilité.
 
-- un marché vide ;
-- un prix à zéro ;
-- une erreur de validation.
+---
 
-Le même principe s’applique aux transactions.
+# Organisation du module
 
-## Responsabilités des fichiers
+```text
+markets/
+├── api/
+│   └── markets.api.ts
+│
+├── components/
+│   ├── MarketGoodsTable.vue
+│   ├── MarketResources.vue
+│   └── MarketTransactionsTable.vue
+│
+├── composables/
+│   ├── market.keys.ts
+│   └── use-market-query.ts
+│
+├── pages/
+│   └── MarketPage.vue
+│
+├── schemas/
+│   └── market.schema.ts
+│
+└── tests/
+    ├── market.fixture.ts
+    └── market.spec.ts
+```
 
-| Fichier ou dossier                       | Responsabilité                                       |
-| ---------------------------------------- | ---------------------------------------------------- |
-| `api/markets.api.ts`                     | Récupération et validation d’un marché               |
-| `schemas/market.schema.ts`               | Contrat complet du marché                            |
-| `composables/market.keys.ts`             | Clé TanStack Query du marché                         |
-| `composables/use-market-query.ts`        | Query du marché                                      |
-| `pages/MarketPage.vue`                   | Paramètres de route, états et composition de la page |
-| `components/MarketResources.vue`         | Exports, imports et exchange                         |
-| `components/MarketGoodsTable.vue`        | Table des prix détaillés                             |
-| `components/MarketTransactionsTable.vue` | Table des transactions récentes                      |
-| `shared/schemas/trade-symbol.schema.ts`  | Enum `TradeSymbol` partagé avec Fleet                |
-| `shared/utils/formatters.ts`             | Formatage partagé des nombres, libellés et dates     |
-| `tests/market.fixture.ts`                | Marchés représentatifs `full` et `partial`           |
-| `tests/market.spec.ts`                   | Tests d’intégration du parcours Market               |
+---
 
-`MarketPage.vue` reste un orchestrateur. Le formatage des cellules et la définition des colonnes appartiennent aux composants de table.
+# Responsabilités
 
-## Tableaux
+| Fichier                                  | Responsabilité                                           |
+| ---------------------------------------- | -------------------------------------------------------- |
+| `api/markets.api.ts`                     | Récupération et va l idation d’un marché                 |
+| `schemas/market.schema.ts`               | Contrat r untime Market                                  |
+| `composables/market.keys.ts`             | Quer y key Market                                        |
+| `composables/use-market-query.ts`        | Query TanStack du marché                                 |
+| `pages/MarketPage.vue`                   | Route, états, refr e sh et composition                   |
+| `components/MarketResources.vue`         | Exports, imports et exchan g e goods                     |
+| `components/MarketGoodsTable.vue`        | Colonnes des prix et adaptation vers `Dat     a   Table` |
+| `components/MarketTransactionsTable.vue` | Colonnes des transactions et adaptation vers `DataTable` |
+| `shared/components/table/DataTable.vue`  | Infrastructure de rendu commune des table s              |
+| `shared/schemas/trade-symbol.schema.ts`  | Contrat TradeSymbol partag é                             |
+| `shared/utils/formatters.ts`             | Formatage des labels, nomb r es et dates                 |
+| `tests/market.fixture.ts`                | Fixtures de marchés compl e ts et partiels               |
+| `tests/market.spec.ts`                   | Tests d’intégration d u parcours Market                  |
 
-Les tables de prix et de transactions utilisent `@tanstack/vue-table`.
+`MarketPage.vue` reste un orchestrateur.
 
-L’intégration reste volontairement minimale :
+La définition des colonnes métier reste dans les composants Market, tandis que le rendu générique d’une table appartient à `DataTable`.
 
-- définition typée des colonnes ;
-- génération des headers et rows ;
-- `FlexRender` pour le rendu ;
-- aucune pagination locale ;
-- aucun filtre local ;
-- aucun tri ;
-- aucune sélection de lignes.
+---
 
-La page ne charge qu’un marché, donc aucune fonctionnalité TanStack Table supplémentaire n’est ajoutée sans besoin produit réel.
+# Appel réseau
 
-## Appel réseau
+Le module utilise :
 
 ```text
 GET /systems/{systemSymbol}/waypoints/{waypointSymbol}/market
 ```
 
-Le token est passé explicitement à `getMarket()`.
+L’appel est réalisé avec :
 
-Après validation Zod, `market.symbol` doit correspondre au `waypointSymbol` demandé.
+````ts
+getMarket(`L token est tranLa fonction API ne lit pas directement Pinia.
 
-Une réponse appartenant à un autre waypoint produit une erreur `invalid-response`.
+---
 
-Le modèle Market ne contient pas `systemSymbol`; la cohérence du système ne peut donc pas être validée directement depuis l’objet retourné.
+# Validation runtime
 
-## Cache
+La réponse SpaceTraders est validée avec Zod avant d’être retournée au reste de l’application.
 
-La clé est :
+Le contrat Market contient obligatoirement :
+
+```text
+symbol
+exports
+imports
+exchange
+````
+
+et peut également contenir :
+
+```text
+tradeGoods
+transactions
+```
+
+Ces deux dernières propriétés sont volontairement facultatives.
+
+---
+
+# Cohérence du waypoint
+
+Après validation du schéma, la couche API vérifie :
+
+```text
+market.symbol === waypointSymbol
+```
+
+Pour :
+
+```text
+GET /systems/X1-TEST/waypoints/X1-TEST-A1/market
+```
+
+le marché retourné doit donc appartenir à :
+
+```text
+X1-TEST-A1
+```
+
+Une réponse correspondant à un autre waypoint produit :
+
+```text
+invalid-response
+```
+
+---
+
+## Pourquoi le système n’est-il pas validé de la même manière ?
+
+Le contrat Market retourné par SpaceTraders ne contient pas :
+
+```text
+systemSymbol
+```
+
+Le frontend ne peut donc pas vérifier directement cette relation à partir de la réponse.
+
+Le système reste néanmoins nécessaire pour construire l’endpoint et identifier la query.
+
+---
+
+# Query key
+
+La clé Market est :
 
 ```ts
 ;['markets', 'detail', systemSymbol, waypointSymbol]
 ```
 
-Le système reste dans la clé même s’il n’est pas présent dans le modèle Market, car il fait partie de l’identité de l’endpoint demandé.
+Les deux symboles participent à l’identité de la requête.
 
-Le marché reste dans TanStack Query et n’est pas recopié dans Pinia.
+;Le changeme--
 
-## États d’interface
+# `useMarketQuery`
 
-| Situation                    | Comportement                                       |
-| ---------------------------- | -------------------------------------------------- |
-| Premier chargement           | État de chargement                                 |
-| Requête suspendue hors ligne | Message d’attente de connexion                     |
-| Marché complet               | Ressources, prix et transactions                   |
-| Marché partiel               | Ressources + explication des détails indisponibles |
-| `tradeGoods: []`             | État vide `No priced goods reported`               |
-| `transactions: []`           | État vide `No recent transactions`                 |
-| `tradeGoods` absent          | `Detailed prices unavailable`                      |
-| `transactions` absent        | `Transaction history unavailable`                  |
-| Erreur initiale              | Message d’erreur et retry                          |
-| Échec d’actualisation        | Dernières données conservées avec avertissement    |
-| 404                          | État `Market not found`                            |
-| Réponse invalide             | Erreur dédiée                                      |
-
-## Navigation
-
-Le marché est accessible uniquement depuis un waypoint dont le trait `MARKETPLACE` est connu.
-
-La page Market expose :
-
-- `Back to waypoint` vers le waypoint parent ;
-- un lien vers le système parent.
-
-Le module `markets` ne dépend pas de composants internes du module `systems`. Les deux modules communiquent par les routes et les symboles présents dans les données.
-
-## Tests
-
-### `market.spec.ts`
-
-Vérifie notamment :
-
-- transmission du token et identité du système/waypoint demandé ;
-- rendu d’un marché complet ;
-- ressources structurelles avec données détaillées absentes ;
-- distinction entre tableaux vides et champs indisponibles ;
-- `activity` facultatif ;
-- réponse incomplète ;
-- marché retourné pour un autre waypoint ;
-- 404 ;
-- conservation des données après un refresh échoué ;
-- liens de retour vers le waypoint et le système.
-
-Les réponses réseau sont simulées avec MSW.
-
-### `systems-market.spec.ts`
-
-Un parcours Playwright couvre l’intégration entre les modules `systems` et `markets`.
-
-Le scénario testé est :
+Le composable reçoit :
 
 ```text
-Connexion
-→ Systems
-→ System
-→ Waypoint Marketplace
-→ Market
-→ retour Waypoint
-→ retour System
-→ Systems
+systemSymbol
+waypointSymbol
 ```
 
-Ce test vérifie le parcours utilisateur principal plutôt que de reproduire tous les cas déjà couverts par `market.spec.ts`.
+comme valeurs réactives.
 
-Les réponses SpaceTraders sont interceptées et simulées afin de conserver un E2E rapide, reproductible et indépendant de l’état du compte utilisé pour le développement.
+La query n’est activée que lorsque :
 
-## Choix de périmètre
+```text
+token
++
+systemSymbol
++
+waypointSymbol
+```
 
-### Consultation plutôt que trading
+sont disponibles.
 
-Cette première version est volontairement consultative.
+Le `AbortSignal` fourni par TanStack Query est transmis jusqu’à `getMarket()`.
 
-Ajouter un bouton `Buy` ou `Sell` ne constituerait pas, à lui seul, une fonctionnalité de trading complète.
+---
 
-Une implémentation correcte demanderait notamment de gérer :
+# Ressources structurelles
 
-- le vaisseau utilisé pour la transaction ;
-- sa présence au waypoint ;
-- son état de navigation ;
-- l’espace disponible dans sa cargaison ;
-- les crédits de l’agent ;
-- la quantité demandée ;
-- les erreurs métier retournées par SpaceTraders ;
-- l’état pending de la mutation ;
-- la prévention des doubles soumissions ;
-- l’invalidation du Market après transaction ;
-- l’invalidation du Ship modifié ;
-- l’invalidation ou la mise à jour de l’Agent lorsque les crédits changent.
+Les ressources structurelles du marché sont :
 
-Cette fonctionnalité traverserait donc `markets`, `fleet` et `agent`.
+```text
+exports
+imports
+exchange
+```
 
-Elle a été laissée hors périmètre plutôt que d’être implémentée partiellement.
+Elles font partie du contrat obligatoire.
 
-### TanStack Table volontairement minimal
+Contrairement aux prix ou aux transactions, leur présence ne dépend donc pas de la disponibilité des informations commerciales détaillées.
 
-TanStack Table est utilisé pour structurer les deux tableaux complexes :
+---
+
+# MarketResources
+
+`MarketResources.vue` présente les trois catégories :
+
+```text
+Exports
+Imports
+Exchange
+```
+
+dans des sections indépendantes.
+
+Chaque section possède :
+
+```text
+titre
+compteur
+description du rôle de la catégorie
+liste des ressources
+```
+
+La vue affiche pour chaque ressource :
+
+```text
+name
+symbol
+description
+```
+
+---
+
+## Exports
+
+Les exports représentent :
+
+```text
+Goods produced and exported from this market.
+```
+
+Un compteur expose également le nombre d’éléments.
+
+L’état vide est :
+
+```text
+No exports reported.
+```
+
+---
+
+## Imports
+
+Les imports représentent les ressources actuellement recherchées par le marché.
+
+L’état vide est :
+
+```text
+No imports reported.
+```
+
+---
+
+## Exchange
+
+Les exchange goods représentent les ressources achetées et vendues entre agents sur ce marché.
+
+L’état vide est :
+
+```text
+No exchange goods reported.
+```
+
+---
+
+# Données détaillées
+
+Deux propriétés supplémentaires peuvent être retournées :
+
+```text
+tradeGoods
+transactions
+```
+
+Elles ne sont pas garanties par le contrat Market.
+
+Cette distinction est importante car SpaceTraders peut retourner un marché valide sans fournir ces informations détaillées.
+
+---
+
+# `undefined` n’est pas équivalent à `[]`
+
+Le module distingue volontairement trois états.
+
+```text
+champ absent
+→ information indisponible
+
+champ présent avec []
+→ information disponible mais aucun élément
+
+champ présent avec des éléments
+→ données disponibles
+```
+
+Exemple :
+
+```ts
+tradeGoods === undefined
+```
+
+signifie :
+
+```text
+les prix détaillés ne sont pas disponibles
+```
+
+alors que :
+
+```ts
+tradeGoods = []
+```
+
+signifie :
+
+```text
+les données détaillées sont disponibles,
+mais aucun trade good n'a été retourné
+```
+
+Ces deux cas ne doivent pas produire le même message.
+
+---
+
+# Trade prices
+
+Lorsque :
+
+```text
+market.tradeGoods?.length
+```
+
+est supérieur à zéro, `MarketPage` affiche :
 
 ```text
 MarketGoodsTable
+```
+
+La table contient :
+
+```text
+Good
+Type
+Supply
+Activity
+Volume
+Purchase
+Sell
+```
+
+---
+
+# MarketGoodsTable
+
+La structure V2 est :
+
+```text
+MarketPage
+    ↓
+MarketGoodsTable
+    ↓
+DataTable
+```
+
+`MarketGoodsTable` possède :
+
+```text
+type métier
+définition des colonnes
+formatage métier
+```
+
+et délègue à `DataTable` :
+
+```text
+<table>
+headers
+rows
+FlexRender
+alignment
+overflow
+```
+
+---
+
+## Good
+
+La première colonne utilise :
+
+```text
+symbol
+```
+
+formaté avec :
+
+```ts
+formatLabel()
+```
+
+Elle reste sticky pendant le scroll horizontal.
+
+Cette colonne constitue l’identité de la ligne.
+
+---
+
+## Type
+
+Le type peut être :
+
+```text
+EXPORT
+IMPORT
+EXCHANGE
+```
+
+et est formaté pour l’affichage.
+
+---
+
+## Supply
+
+Le niveau de supply peut notamment être :
+
+```text
+SCARCE
+LIMITED
+MODERATE
+HIGH
+ABUNDANT
+```
+
+La valeur est présentée sous forme lisible mais reste directement dérivée du contrat serveur.
+
+---
+
+## Activity
+
+`activity` est facultatif.
+
+Lorsqu’il existe, il peut notamment contenir :
+
+```text
+WEAK
+GROWING
+STRONG
+RESTRICTED
+```
+
+Lorsqu’il est absent, l’interface affiche explicitement :
+
+```text
+Not reported
+```
+
+Elle ne transforme pas cette absence en une valeur métier inventée.
+
+---
+
+## Valeurs numériques
+
+Les colonnes :
+
+```text
+Volume
+Purchase
+Sell
+```
+
+sont alignées à droite.
+
+Elles utilisent :
+
+```text
+font-mono
+tabular-nums
+```
+
+afin d’améliorer la comparaison verticale des nombres.
+
+Le formatage passe par :
+
+```ts
+formatNumber()
+```
+
+---
+
+# DataTable Market Goods
+
+`MarketGoodsTable` fournit au composant partagé :
+
+```text
+aria-label="Market trade prices"
+min-width="60rem"
+```
+
+Sur un petit viewport, le scroll horizontal reste donc local à la table.
+
+La colonne Good reste visible grâce à sa position sticky.
+
+---
+
+# Prix détaillés indisponibles
+
+Lorsque :
+
+```ts
+market.tradeGoods === undefined
+```
+
+aucune table vide n’est affichée.
+
+L’interface présente :
+
+```text
+Detailed prices unavailable
+```
+
+avec l’explication :
+
+```text
+SpaceTraders only exposes trade prices when one of your ships is present at this marketplace.
+```
+
+Cette situation n’est pas traitée comme une erreur.
+
+Le Market lui-même reste valide.
+
+---
+
+# Prix détaillés disponibles mais vides
+
+Lorsque :
+
+```ts
+market.tradeGoods = []
+```
+
+l’interface utilise un véritable état vide :
+
+```text
+No priced goods reported
+```
+
+avec :
+
+```text
+Detailed market data is available,
+but no trade goods were returned.
+```
+
+Cela distingue clairement :
+
+```text
+aucune donnée disponible
+```
+
+et :
+
+```text
+données disponibles mais collection vide
+```
+
+---
+
+# Recent transactions
+
+Lorsque :
+
+```text
+market.transactions?.length
+```
+
+est supérieur à zéro, l’interface affiche :
+
+```text
 MarketTransactionsTable
 ```
 
-Seul le cœur nécessaire au rendu est activé.
-
-Le projet n’ajoute pas encore :
-
-- tri ;
-- filtrage local ;
-- pagination locale ;
-- sélection ;
-- visibilité dynamique des colonnes ;
-- virtualisation.
-
-Le volume de données affiché ne justifie pas encore ces comportements.
-
-L’utilisation actuelle permet néanmoins de disposer de définitions de colonnes typées et d’une structure qui pourra évoluer sans réécrire les tables.
-
-### Transactions et navigation Fleet
-
-Le symbole du vaisseau d’une transaction reste du texte.
-
-Un Market peut contenir une transaction provenant d’un vaisseau qui n’appartient pas à l’agent courant.
-
-Créer automatiquement :
+Les colonnes sont :
 
 ```text
-/fleet/:shipSymbol
+Good
+Type
+Ship
+Units
+Unit price
+Total
+Date
 ```
 
-aurait donc produit des liens potentiellement invalides vers `/my/ships/:symbol`.
+---
 
-Le lien sera pertinent uniquement si l’application peut garantir que le vaisseau concerné appartient à l’agent.
+# MarketTransactionsTable
 
-### Pas d’historique de prix
+La structure est :
 
-SpaceTraders fournit un état courant du marché et des transactions récentes, mais l’application ne persiste pas localement les observations successives.
+```text
+MarketPage
+    ↓
+MarketTransactionsTable
+    ↓
+DataTable
+```
 
-Il n’existe donc pas :
+Comme pour Trade prices, le composant métier possède les colonnes tandis que `DataTable` possède le rendu générique.
 
-- de graphique historique ;
-- de tendance de prix ;
-- de comparaison temporelle ;
-- de calcul de volatilité.
+---
 
-Une vraie fonctionnalité de ce type demanderait une couche de stockage ou une source historique dédiée.
+## Good
 
-### Pas de comparaison automatique de marchés
+La première colonne contient :
 
-La version actuelle consulte un marché dans son contexte géographique.
+```text
+tradeSymbol
+```
 
-Comparer plusieurs marchés demanderait notamment :
+formaté avec :
 
-- de sélectionner ou découvrir plusieurs waypoints Marketplace ;
-- de charger plusieurs marchés ;
-- de comparer les prix d’un même `TradeSymbol` ;
-- d’intégrer éventuellement distance, consommation et capacité du vaisseau.
+```ts
+formatLabel()
+```
 
-Cette évolution deviendrait progressivement une fonctionnalité de planification commerciale et sort du périmètre actuel.
+Elle reste sticky pendant le scroll horizontal.
 
-### Actualisation
+---
 
-L’actualisation reste manuelle.
+## Transaction type
 
-Aucun polling n’est ajouté par défaut afin d’éviter des requêtes régulières qui ne sont pas nécessaires au parcours consultatif.
+Le type correspond actuellement à :
 
-Si une future fonctionnalité de trading ou de suivi actif nécessite des données plus fraîches, la politique de `staleTime`, de refetch et éventuellement de polling devra être définie explicitement.
+```text
+PURCHASE
+SELL
+```
 
-## Ce que j’améliorerais avec plus de temps
+et est formaté pour l’affichage.
 
-Les évolutions prioritaires seraient :
+---
 
-1. Ajouter le tri des tables sur prix, volume ou supply.
-2. Ajouter une recherche locale par `TradeSymbol`.
-3. Comparer un produit entre plusieurs marketplaces.
-4. Afficher une marge potentielle achat/vente.
-5. Prendre en compte distance et consommation dans une estimation commerciale.
-6. Ajouter un historique de prix si une source de données adaptée est disponible.
-7. Implémenter un workflow complet d’achat et de vente.
-8. Améliorer le rendu mobile des tables au-delà du simple scroll horizontal.
-9. Ajouter une politique d’actualisation adaptée aux données commerciales.
-10. Ajouter davantage de vérifications d’accessibilité automatisées.
+# Ship symbol
 
-## Limites et validation restante
+Le symbole du vaisseau est affiché comme donnée technique :
 
-Les principales extensions possibles sont détaillées ci-dessus.
+```text
+TEST-SHIP-1
+```
 
-La version actuelle reste volontairement :
+en typographie monospace.
 
-- consultative ;
-- sans mutation de crédits ou cargaison ;
-- sans planification commerciale ;
-- sans comparaison multi-marchés ;
-- sans historique des prix ;
-- sans polling automatique.
+Il n’est volontairement pas transformé en lien vers Fleet.
 
-La recette finale doit encore vérifier :
+---
 
-- la lisibilité des tables sur petits écrans ;
-- le défilement horizontal ;
-- la navigation clavier ;
-- le focus visible ;
-- les textes longs ;
-- le rechargement direct de la route Market après déploiement.
+## Pourquoi ne pas ouvrir le Ship automatiquement ?
 
-La réussite des tests automatisés ne constitue pas à elle seule une validation visuelle.
+Une transaction Market ne garantit pas que :
+
+```text
+shipSymbol
+```
+
+appartient à l’agent actuellement connecté.
+
+Transformer systématiquement cette valeur en lien :
+
+```text
+/fleet/:symbol
+```
+
+pourrait donc créer une navigation vers une ressource inaccessible ou inexistante pour la session courante.
+
+La V2 préfère conserver la valeur comme texte tant que cette propriété n’est pas connue.
+
+---
+
+# Valeurs numériques des transactions
+
+Les colonnes :
+
+```text
+Units
+Unit price
+Total
+```
+
+sont alignées à droite et utilisent :
+
+```text
+font-mono
+tabular-nums
+```
+
+Le calcul total n’est pas refait côté frontend.
+
+L’interface affiche directement :
+
+```text
+transaction.totalPrice
+```
+
+fourni par le contrat serveur.
+
+---
+
+# Date
+
+La date utilise :
+
+```ts
+formatDate()
+```
+
+pour la présentation.
+
+La valeur originale reste disponible grâce à :
+
+```html
+<time datetime="..."></time>
+```
+
+L’information sémantique complète n’est donc pas perdue lors du formatage visuel.
+
+---
+
+# DataTable Transactions
+
+`MarketTransactionsTable` utilise :
+
+> </time
+
+```text
+aria-label="Market transactions"
+min-width="64rem"
+```
+
+Comme pour les autres tables V2 :
+
+```text
+page
+→ ne déborde pas horizontalement
+
+DataTable
+→ possède son propre scroll horizontal
+```
+
+---
+
+# Historique indisponible
+
+Lorsque :
+
+```ts
+market.transactions === undefined
+```
+
+la page affiche :
+
+```text
+Transaction history unavailable
+```
+
+avec l’explication que les transactions deviennent disponibles lorsque l’un des vaisseaux de l’agent est présent sur le marketplace.
+
+---
+
+# Historique disponible mais vide
+
+Lorsque :
+
+```ts
+market.transactions = []
+```
+
+l’interface affiche :
+
+```text
+No recent transactions
+```
+
+La distinction :
+
+```text
+undefined
+≠
+[]
+```
+
+reste donc cohérente entre Prices et Transactions.
+
+---
+
+# MarketPage
+
+`MarketPage.vue` orchestre :
+
+```text
+route params
++
+useMarketQuery()
++
+loading
++
+offline
++
+404
++
+refresh
++
+MarketResources
++
+Trade prices
++
+Recent transactions
+```
+
+Il ne possède pas la logique interne de rendu des tables.
+
+---
+
+# Header
+
+Lorsque le marché est chargé, le header affiche :
+
+```text
+Marketplace
+market.symbol
+System
+Refresh
+```
+
+Le système est directement navigable.
+
+Le lien possède un nom accessible :
+
+```text
+Open system {systemSymbol}
+```
+
+---
+
+# Navigation retour
+
+La page expose en permanence :
+
+```text
+Back to waypoint
+```
+
+vers :
+
+```text
+/systems/:systemSymbol/waypoints/:waypointSymbol
+```
+
+Le lien possède :
+
+```text
+aria-label="Back to waypoint"
+```
+
+Le module `markets` n’importe pas de composant interne du module `systems`.
+
+L’intégration passe par :
+
+```text
+route names
++
+route params
+```
+
+---
+
+# Accès au Market
+
+La page Market est normalement ouverte depuis `WaypointDetailPage`.
+
+L’action :
+
+```text
+Open waypoint market
+```
+
+n’est présentée que si le waypoint possède réellement le trait :
+
+```text
+MARKETPLACE
+```
+
+Un waypoint uniquement :
+
+```text
+UNCHARTED
+```
+
+avec Marketplace status :
+
+```text
+Unknown
+```
+
+ne suffit pas à afficher le bouton.
+
+L’application ne crée donc pas une navigation Market basée sur une supposition.
+
+---
+
+# Premier chargement
+
+Lorsque la query n’a encore aucune donnée :
+
+```text
+isPending
+```
+
+affiche :
+
+```text
+Loading market
+```
+
+ou, si la query est suspendue :
+
+```text
+Waiting for connection
+```
+
+---
+
+# Offline
+
+Lorsque la requête ne peut pas partir parce que la connexion est indisponible :
+
+```text
+The request will resume when your connection is available.
+```
+
+est présenté.
+
+Lorsqu’un refresh est suspendu après qu’un marché a déjà été chargé, les données existantes restent visibles.
+
+---
+
+# Refresh
+
+Le bouton :
+
+```text
+Refresh
+```
+
+relance la query.
+
+Pendant l’actualisation :
+
+```text
+Updating market information…
+```
+
+est affiché.
+
+Le bouton expose :
+
+```text
+aria-label="Refresh market"
+```
+
+et utilise l’état `loading` de `AppButton`.
+
+---
+
+# Erreur pendant refresh
+
+Si une première requête a déjà réussi et qu’une actualisation échoue :
+
+```text
+market
+→ reste affiché
+
+error
+→ devient un avertissement
+```
+
+Le message est :
+
+```text
+Could not refresh market
+```
+
+puis :
+
+```text
+The last successfully loaded market information is still displayed.
+```
+
+Cette règle évite de supprimer des informations valides simplement parce qu’un refresh secondaire a échoué.
+
+---
+
+# Erreur initiale
+
+Lorsqu’aucune donnée n’a encore été chargée et que la requête échoue :
+
+```text
+Unable to load market
+```
+
+est affiché.
+
+L’utilisateur peut relancer la requête avec :
+
+```text
+Try again
+```
+
+tant que l’erreur n’est pas un 404.
+
+---
+
+# Market not found
+
+Un HTTP :
+
+```text
+404
+```
+
+produit un état spécifique :
+
+```text
+Market not found
+```
+
+avec :
+
+```text
+No accessible market could be found for this waypoint.
+```
+
+Le lien :
+
+```text
+Back to waypoint
+```
+
+reste disponible.
+
+Le 404 n’est pas traité comme une erreur générique nécessitant un retry permanent.
+
+---
+
+# Réponse invalide
+
+Deux catégories sont notamment rejetées :
+
+```text
+contrat Zod incomplet
+```
+
+ou :
+
+```text
+market.symbol différent du waypoint demandé
+```
+
+L’interface ne transforme jamais une réponse invalide en marché partiellement vide.
+
+---
+
+# Authentification
+
+Le module Market ne possède pas de logique de session spécifique.
+
+Si SpaceTraders rejette le token :
+
+```text
+ApiError(authentication)
+    ↓
+QueryCache global
+    ↓
+AuthStore nettoyé
+    ↓
+cache nettoyé
+    ↓
+AppLayout
+    ↓
+Login
+```
+
+Le comportement reste commun au reste de l’application.
+
+---
+
+# Tables et architecture V2
+
+Les tables Market ont servi parmi les premiers usages de TanStack Table dans le projet.
+
+Avec l’apparition des mêmes besoins dans :
+
+```text
+Fleet
+Systems
+Waypoints
+Markets
+```
+
+le mécanisme de rendu commun a été extrait dans :
+
+```text
+shared/components/table/
+```
+
+La V2 utilise donc maintenant :
+
+```text
+Feature-specific table
+        ↓
+DataTable
+        ↓
+TanStack Table
+```
+
+---
+
+# Frontière entre Market et DataTable
+
+`MarketGoodsTable` et `MarketTransactionsTable` possèdent :
+
+```text
+types métier
+colonnes
+formatage
+largeurs
+alignements
+```
+
+`DataTable` possède :
+
+```text
+table sémantique
+headers
+rows
+FlexRender
+metadata de colonnes
+aria-busy
+overflow horizontal
+```
+
+Cette séparation permet de réutiliser l’infrastructure sans déplacer le comportement Market dans un composant générique.
+
+---
+
+# Fonctionnalités TanStack volontairement non utilisées
+
+Le Market affiche une seule ressource avec des collections relativement petites.
+
+La version actuelle n’ajoute donc pas :
+
+```text
+sorting
+local filtering
+local pagination
+row selection
+column visibility
+virtualization
+```
+
+La présence de TanStack Table ne justifie pas à elle seule l’activation de ces fonctionnalités.
+
+Elles pourront être ajoutées si le volume ou le besoin utilisateur l’exige réellement.
+
+---
+
+# Formatters partagés
+
+Les tables réutilisent :
+
+```ts
+formatLabel()
+formatNumber()
+formatDate()
+```
+
+depuis :
+
+```text
+shared/utils/formatters.ts
+```
+
+Ces fonctions sont partagées car elles ne décrivent pas une règle spécifique au domaine Market.
+
+---
+
+# TradeSymbol partagé
+
+Le contrat :
+
+```text
+TradeSymbol
+```
+
+est partagé entre plusieurs domaines.
+
+Il est donc défini dans :
+
+```text
+shared/schemas/trade-symbol.schema.ts
+```
+
+plutôt que dupliqué dans Fleet et Markets.
+
+---
+
+# Tests
+
+## `market.spec.ts`
+
+La suite d’intégration couvre notamment :
+
+```text
+token de session
+system demandé
+waypoint demandé
+marché complet
+Market resources
+Trade prices
+Transactions
+activity absente
+marché partiel
+tradeGoods absent
+transactions absentes
+collections détaillées vides
+réponse incomplète
+mauvais waypoint
+404
+refresh échoué
+navigation waypoint
+navigation système
+```
+
+Les réponses réseau sont simulées avec MSW.
+
+---
+
+## Marché complet
+
+Le test vérifie notamment la présence de deux tables :
+
+```text
+Market trade prices
+Market transactions
+```
+
+ainsi que :
+
+```text
+Exports
+Imports
+Exchange
+Trade prices
+Recent transactions
+```
+
+---
+
+## Marché partiel
+
+Une fixture sans :
+
+```text
+tradeGoods
+transactions
+```
+
+doit encore afficher :
+
+```text
+Market resources
+```
+
+et produire :
+
+```text
+Detailed prices unavailable
+Transaction history unavailable
+```
+
+Aucune table détaillée n’est créée artificiellement.
+
+---
+
+## Collections vides
+
+Avec :
+
+```ts
+market.tradeGoods = []
+market.transactions = []
+```
+
+le test vérifie :
+
+```text
+No priced goods reported
+No recent transactions
+```
+
+et l’absence des messages :
+
+```text
+Detailed prices unavailable
+Transaction history unavailable
+```
+
+Cela protège explicitement la distinction :
+
+```text
+undefined
+≠
+[]
+```
+
+---
+
+## Refresh échoué
+
+Après un chargement réussi, le test provoque une erreur pendant :
+
+```text
+Refresh market
+```
+
+et vérifie que restent visibles :
+
+```text
+Market resources
+Trade prices
+transactions précédentes
+```
+
+en même temps que :
+
+```text
+Could not refresh market
+```
+
+---
+
+# E2E
+
+Le parcours `systems-market.spec.ts` couvre l’intégration complète :
+
+```text
+Login
+    ↓
+Systems
+    ↓
+System detail
+    ↓
+Waypoint detail
+    ↓
+Market
+    ↓
+Waypoint
+    ↓
+System
+```
+
+Le scénario vérifie notamment :
+
+```text
+Market resources
+Exports
+Imports
+Exchange
+Market trade prices
+Market transactions
+```
+
+ainsi que les navigations retour.
+
+Les sélecteurs reposent sur les rôles et noms accessibles plutôt que sur la structure CSS.
+
+---
+
+# Pourquoi le Market reste read-only ?
+
+Ajouter simplement :
+
+```text
+Buy
+Sell
+```
+
+ne constituerait pas une fonctionnalité de trading correcte.
+
+Une mutation complète devrait tenir compte de plusieurs domaines.
+
+```text
+Market
+├── prix courant
+└── waypoint
+
+Ship
+├── présence au waypoint
+├── état de navigation
+└── cargo disponible
+
+Agent
+└── credits
+```
+
+Il faudrait ensuite gérer :
+
+```text
+quantité
+état pending
+erreurs métier
+double soumission
+mise à jour du Ship
+mise à jour du Market
+mise à jour des crédits Agent
+invalidation des queries concernées
+```
+
+Cette fonctionnalité traverserait donc :
+
+```text
+markets
+fleet
+agent
+```
+
+Elle est laissée hors périmètre plutôt que d’être implémentée partiellement.
+
+---
+
+# Choix de conception
+
+## Module séparé
+
+Markets reste distinct de Systems car le domaine commercial possède maintenant :
+
+```text
+API
+schema
+query
+page
+components
+tests
+```
+
+propres.
+
+---
+
+## Données serveur
+
+Le Market reste exclusivement dans TanStack Query.
+
+Il n’est pas dupliqué dans Pinia.
+
+---
+
+## Informations absentes
+
+Le frontend conserve la sémantique exacte du contrat SpaceTraders :
+
+```text
+propriété optionnelle absente
+≠
+collection vide
+```
+
+---
+
+## Pas de lien Ship spéculatif
+
+Un `shipSymbol` provenant d’une transaction n’est pas considéré comme un vaisseau appartenant automatiquement à la session actuelle.
+
+---
+
+## DataTable partagé
+
+La base de table est partagée uniquement pour les responsabilités réellement communes.
+
+Les définitions métier restent dans Markets.
+
+---
+
+# Limites actuelles
+
+La version actuelle n’implémente pas :
+
+```text
+buy
+sell
+choix d'un vaisseau
+quantité de transaction
+validation cargo
+validation crédits
+refresh automatique des prix
+historique paginé
+sorting
+filtering
+column visibility
+virtualization
+graphiques de prix
+comparaison entre plusieurs markets
+planification commerciale
+```
+
+Ces fonctionnalités pourront être ajoutées si un besoin produit concret les justifie.
+
+La V2 privilégie pour l’instant une consultation fiable et explicite des données réellement fournies par SpaceTraders.
