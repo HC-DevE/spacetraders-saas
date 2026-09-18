@@ -16,6 +16,20 @@ Login
 
 ---
 
+## Live demos
+
+Two versions of the project are available online:
+
+| Version | Focus                                                        | Demo              |
+| ------- | ------------------------------------------------------------ | ----------------- |
+| V1      | Initial functional vertical slice                            | [Open V1](URL_V1) |
+| V2      | Refined UI, shared data tables, navigation and design system | [Open V2](URL_V2) |
+
+The V2 keeps the same functional foundation while refining the application shell,
+data presentation, responsive behavior, accessibility and shared UI architecture.
+
+---
+
 ## Fonctionnalités
 
 | Domaine    | Fonctionnalités                                                   |
