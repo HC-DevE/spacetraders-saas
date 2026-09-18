@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
 import { Label } from '@/shared/components/ui/label'
+import ViewModeToggle from '@/shared/components/view-mode/ViewModeToggle.vue'
+import { type ViewMode, viewModes } from '@/shared/components/view-mode/view-mode'
 
+import SystemCard from '../components/SystemCard.vue'
 import SystemTable from '../components/SystemTable.vue'
 import { useSystemsQuery } from '../composables/use-systems-query'
 import {
@@ -19,6 +22,8 @@ const route = useRoute()
 const router = useRouter()
 
 const params = computed(() => systemsSearchSchema.parse(route.query))
+
+const viewMode = ref<ViewMode>(viewModes.table)
 
 const {
   data: systems,
@@ -122,20 +127,24 @@ async function changeLimit(event: Event) {
         </template>
       </p>
 
-      <div class="flex items-center gap-3">
-        <Label for="systems-limit" class="text-xs text-muted-foreground"> Per page </Label>
+      <div class="flex flex-wrap items-center gap-4">
+        <ViewModeToggle v-model="viewMode" />
 
-        <select
-          id="systems-limit"
-          :value="params.limit"
-          :disabled="isFetching"
-          class="h-8 border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          @change="changeLimit"
-        >
-          <option v-for="size in systemsPageSizes" :key="size" :value="size">
-            {{ size }}
-          </option>
-        </select>
+        <div class="flex items-center gap-3">
+          <Label for="systems-limit" class="text-xs text-muted-foreground"> Per page </Label>
+
+          <select
+            id="systems-limit"
+            :value="params.limit"
+            :disabled="isFetching"
+            class="h-8 border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            @change="changeLimit"
+          >
+            <option v-for="size in systemsPageSizes" :key="size" :value="size">
+              {{ size }}
+            </option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -185,12 +194,28 @@ async function changeLimit(event: Event) {
         Updating systems…
       </p>
 
-      <SystemTable
-        v-if="systems.data.length"
-        :systems="systems.data"
-        :is-fetching="isFetching"
-        :is-placeholder-data="isPlaceholderData"
-      />
+      <template v-if="systems.data.length">
+        <SystemTable
+          v-if="viewMode === viewModes.table"
+          :systems="systems.data"
+          :is-fetching="isFetching"
+          :is-placeholder-data="isPlaceholderData"
+        />
+
+        <ul
+          v-else
+          aria-label="System cards"
+          :aria-busy="isFetching ? 'true' : undefined"
+          class="grid gap-4 lg:grid-cols-2"
+          :class="{
+            'opacity-60': isPlaceholderData,
+          }"
+        >
+          <li v-for="system in systems.data" :key="system.symbol" class="min-w-0">
+            <SystemCard :system="system" class="h-full" />
+          </li>
+        </ul>
+      </template>
 
       <FeedbackState
         v-else

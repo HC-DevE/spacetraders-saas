@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
 import { Label } from '@/shared/components/ui/label'
 import ViewModeToggle from '@/shared/components/view-mode/ViewModeToggle.vue'
-import { parseViewMode, type ViewMode, viewModes } from '@/shared/components/view-mode/view-mode'
+import { type ViewMode, viewModes } from '@/shared/components/view-mode/view-mode'
 
 import ShipCard from '../components/ShipCard.vue'
 import ShipTable from '../components/ShipTable.vue'
@@ -23,7 +23,7 @@ const router = useRouter()
 
 const params = computed(() => shipsSearchSchema.parse(route.query))
 
-const viewMode = computed(() => parseViewMode(route.query.view))
+const viewMode = ref<ViewMode>(viewModes.table)
 
 const {
   data: ships,
@@ -90,22 +90,6 @@ async function changeLimit(event: Event) {
 
   await replacePagination(parsed.data)
 }
-
-async function changeViewMode(nextViewMode: ViewMode) {
-  const query = {
-    ...route.query,
-  }
-
-  if (nextViewMode === viewModes.table) {
-    delete query.view
-  } else {
-    query.view = nextViewMode
-  }
-
-  await router.replace({
-    query,
-  })
-}
 </script>
 
 <template>
@@ -144,7 +128,7 @@ async function changeViewMode(nextViewMode: ViewMode) {
       </p>
 
       <div class="flex flex-wrap items-center gap-4">
-        <ViewModeToggle :model-value="viewMode" @update:model-value="changeViewMode" />
+        <ViewModeToggle v-model="viewMode" />
 
         <div class="flex items-center gap-3">
           <Label for="ships-limit" class="text-xs text-muted-foreground"> Per page </Label>

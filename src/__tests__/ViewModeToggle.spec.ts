@@ -2,21 +2,7 @@ import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 
 import ViewModeToggle from '@/shared/components/view-mode/ViewModeToggle.vue'
-import { parseViewMode, viewModes } from '@/shared/components/view-mode/view-mode'
-
-describe('parseViewMode', () => {
-  it('accepts the cards view mode', () => {
-    expect(parseViewMode('cards')).toBe(viewModes.cards)
-  })
-
-  it('falls back to table for every other value', () => {
-    expect(parseViewMode('table')).toBe(viewModes.table)
-    expect(parseViewMode('invalid')).toBe(viewModes.table)
-    expect(parseViewMode(undefined)).toBe(viewModes.table)
-    expect(parseViewMode(null)).toBe(viewModes.table)
-    expect(parseViewMode(['cards'])).toBe(viewModes.table)
-  })
-})
+import { viewModes } from '@/shared/components/view-mode/view-mode'
 
 describe('ViewModeToggle', () => {
   it('exposes the current view mode accessibly', () => {
