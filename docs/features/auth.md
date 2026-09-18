@@ -2,119 +2,258 @@
 
 ## Objectif
 
-Le module `auth` gère la session locale nécessaire pour appeler l’API SpaceTraders.
+Le module `auth` gère uniquement la session frontend nécessaire pour appeler l’API SpaceTraders.
 
-SpaceTraders utilise un token Bearer.
+SpaceTraders utilise un token Bearer fourni par l’utilisateur depuis la page de connexion.
 
-L’utilisateur fournit ce token depuis la page de connexion.
-
-Le module Auth est volontairement limité à :
+Le module reste volontairement limité à :
 
 ```text
 token
+agentSymbol
 connexion
 persistance locale
 déconnexion
 protection des routes
 ```
 
-Les informations de l’agent ne sont pas stockées dans Auth.
+Les ressources serveur complètes, comme l’objet `Agent`, ne sont pas stockées dans Pinia.
 
-Elles appartiennent au module `agent` et restent dans TanStack Query.
+Elles restent gérées par TanStack Query.
 
 ---
 
-## Flux de connexion
+# Flux de connexion
 
-Le parcours de connexion est :
+Le parcours principal est :
 
 ```text
 Token saisi
-↓
+    ↓
 validation locale
-↓
+    ↓
 GET /my/agent
-↓
-token accepté ?
-↓
-oui
-↓
-nettoyage du QueryCache précédent
-↓
-persistance du token
-↓
-mise en cache de l’agent
-↓
-navigation vers l’overview
+    ↓
+validation SpaceTraders
+    ↓
+setToken()
+    ↓
+setAgentSymbol()
+    ↓
+suppression du cache précédent
+    ↓
+mise en cache de ['agent', 'current']
+    ↓
+navigation vers l'overview
 ```
 
-Le token n’est enregistré qu’après validation par SpaceTraders.
+Le token n’est donc jamais considéré comme valide uniquement parce qu’il a été saisi.
+
+La validation réelle passe par :
+
+```text
+GET /my/agent
+```
 
 ---
 
-## Store Pinia
+# Store Pinia
 
-Le store Auth reste volontairement minimal.
-
-Il expose :
+Le store Auth expose :
 
 ```ts
 token
-
+agentSymbol
 hasToken
 
 setToken()
-
+setAgentSymbol()
 clearToken()
 ```
 
 Il ne contient pas :
 
 ```text
-agent
-user profile
-ships
-systems
-market
+Agent complet
+Ships
+Systems
+Waypoints
+Markets
 loading global
-error global
+erreurs globales
 ```
 
-Les données serveur ne sont pas dupliquées dans Pinia.
+Ces ressources sont du server state et restent dans TanStack Query.
 
 ---
 
-## Persistance
+# Token et identité de l’agent
 
-Le token est conservé dans :
+Le store conserve deux valeurs distinctes :
 
 ```text
-localStorage
+token
+→ nécessaire pour authentifier les requêtes
+
+agentSymbol
+→ information d'identité légère utilisée par le shell
 ```
 
-Ce choix permet de restaurer la session après fermeture ou rechargement du navigateur.
+`agentSymbol` ne représente pas une duplication de l’objet Agent complet.
 
-Au démarrage de l’application, la présence du token permet d’accéder aux routes protégées.
+Il sert principalement à afficher l’identité de la session dans :
 
-La validité du token reste cependant vérifiée lors des appels SpaceTraders.
+```text
+AppHeader
+```
 
-La présence locale d’une valeur n’est donc pas considérée comme une preuve définitive que la session est toujours valide.
+Par exemple :
 
----
-
-## Pourquoi `localStorage` ?
-
-Dans ce test technique, le frontend communique directement avec l’API SpaceTraders.
-
-Il n’existe pas de backend applicatif contrôlé par le projet permettant d’utiliser par exemple une session serveur ou un cookie HttpOnly.
-
-`localStorage` constitue donc ici un compromis simple pour restaurer la session.
-
-Dans une application de production disposant de son propre backend, une stratégie différente pourrait être préférable selon le modèle de sécurité retenu.
+```text
+Space Control               TEST   Sign out
+```
 
 ---
 
-## Validation locale
+## Pourquoi conserver `agentSymbol` ?
+
+Le header est présent sur toutes les pages authentifiées.
+
+Une alternative aurait été d’y exécuter :
+
+```ts
+useAgentQuery()
+```
+
+Cela aurait cependant couplé le shell à la ressource Agent et aurait pu provoquer des requêtes `/my/agent` depuis des écrans qui n’en ont pas besoin.
+
+La V2 préfère donc :
+
+```text
+AppHeader
+→ reçoit agentSymbol depuis Auth
+
+AgentOverview
+→ utilise useAgentQuery()
+```
+
+Le shell reste ainsi indépendant des données serveur détaillées.
+
+---
+
+# Persistance locale
+
+La session utilise deux clés :
+
+```text
+space-control.agent-token
+space-control.agent-symbol
+```
+
+Le token permet de restaurer l’authentification après un rechargement du navigateur.
+
+Le symbole de l’agent permet de restaurer immédiatement l’identité visuelle du shell lorsqu’il est disponible.
+
+---
+
+## Lecture défensive du storage
+
+Les accès à `localStorage` sont encapsulés dans une lecture défensive.
+
+Une erreur du navigateur ne doit pas provoquer une exception au chargement de l’application.
+
+Si aucune valeur exploitable n’est disponible :
+
+```text
+null
+```
+
+est utilisé.
+
+---
+
+# Persistance du token
+
+`setToken()` suit une règle stricte :
+
+```text
+écriture localStorage
+    ↓
+succès
+    ↓
+mise à jour Pinia
+```
+
+Si le navigateur refuse l’écriture :
+
+```text
+la session n'est pas ouverte
+```
+
+et une erreur utilisateur est remontée.
+
+Cela évite d’avoir :
+
+```text
+Pinia authentifié
++
+storage non persisté
+```
+
+après une connexion qui semblait réussie.
+
+---
+
+# Persistance de `agentSymbol`
+
+`agentSymbol` est traité différemment.
+
+Une fois la session valide :
+
+```text
+agentSymbol
+→ mis à jour en mémoire
+```
+
+puis l’application tente de le sauvegarder dans `localStorage`.
+
+Si cette écriture échoue, la session reste valide.
+
+Ce choix est volontaire :
+
+```text
+token
+→ nécessaire à l'authentification
+
+agentSymbol
+→ métadonnée d'affichage
+```
+
+Une impossibilité de persister le symbole ne doit donc pas invalider un token fonctionnel.
+
+---
+
+# Pourquoi `localStorage` ?
+
+Le frontend communique directement avec l’API SpaceTraders.
+
+Le projet ne possède pas de backend intermédiaire permettant d’utiliser :
+
+```text
+session serveur
+cookie HttpOnly
+BFF
+```
+
+Dans ce contexte, `localStorage` constitue un compromis simple pour restaurer la session entre deux visites.
+
+Ce choix est spécifique au périmètre du test technique.
+
+Une application de production disposant de son propre backend pourrait utiliser une stratégie différente selon son modèle de sécurité.
+
+---
+
+# Validation locale du token
 
 Avant l’appel réseau, le token est :
 
@@ -122,21 +261,65 @@ Avant l’appel réseau, le token est :
 trim()
 ```
 
-puis vérifié comme non vide.
+puis validé comme non vide avec Zod.
 
-L’objectif est uniquement d’empêcher une requête manifestement invalide.
+L’objectif est uniquement d’éviter une requête manifestement invalide.
 
 Le frontend ne tente pas de reproduire les règles internes de génération des tokens SpaceTraders.
 
-La validation réelle appartient au serveur :
-
-```text
-GET /my/agent
-```
+La validation définitive appartient au serveur.
 
 ---
 
-## Vérification du token
+# Champ de token
+
+Le champ est masqué par défaut :
+
+```text
+type="password"
+```
+
+L’utilisateur peut afficher ou masquer temporairement sa valeur grâce à un contrôle dédié.
+
+La V2 utilise :
+
+```ts
+Eye
+EyeOff
+```
+
+depuis :
+
+```text
+@lucide/vue
+```
+
+Le bouton expose :
+
+```text
+aria-pressed
+aria-controls="agent-token"
+aria-label dynamique
+```
+
+avec par exemple :
+
+```text
+Show agent token
+Hide agent token
+```
+
+Les icônes sont décoratives :
+
+```text
+aria-hidden="true"
+```
+
+Le nom accessible reste porté par le bouton.
+
+---
+
+# Validation du token candidat
 
 La connexion utilise :
 
@@ -144,463 +327,565 @@ La connexion utilise :
 getAgent(candidateToken)
 ```
 
-avec le token candidat passé explicitement.
+Le token candidat est passé explicitement à la fonction API.
 
-La fonction API n’accède pas au store Auth.
+La fonction ne lit pas directement Pinia.
 
-Cela permet de vérifier un token avant de modifier la session courante.
+Cela permet de vérifier un token avant de modifier la session active.
 
 ---
 
-## Ne pas supprimer la session avant validation
+# Une session existante n’est pas supprimée avant validation
 
-Lorsqu’un utilisateur soumet un nouveau token, l’ancienne session valide n’est pas supprimée avant de savoir si le nouveau token fonctionne.
-
-Le flux est donc :
+Lorsqu’un nouveau token est soumis :
 
 ```text
 session actuelle
 +
+token candidat
+```
+
+coexistent jusqu’à la réponse de SpaceTraders.
+
+Le flux est :
+
+```text
 nouveau token candidat
-↓
-validation réseau du candidat
-↓
+    ↓
+GET /my/agent
+    ↓
+
 succès
 → remplacement de session
 
 échec
-→ session précédente non supprimée prématurément
+→ aucun remplacement
 ```
 
-Cela évite qu’une faute de saisie détruit immédiatement une session encore valide.
+Une faute de saisie ne détruit donc pas prématurément une session valide.
 
 ---
 
-## `useMutation`
+# `useMutation`
 
-La connexion est une action déclenchée par l’utilisateur et non une donnée à lire automatiquement.
+La connexion est une action déclenchée explicitement par l’utilisateur.
 
-Elle utilise donc TanStack Query `useMutation`.
+Elle utilise donc :
 
-La mutation gère notamment :
+```ts
+useMutation()
+```
 
-- pending ;
-- succès ;
-- erreur.
+et non `useQuery()`.
 
-Il n’est pas nécessaire de créer manuellement des flags tels que :
+La mutation fournit directement :
 
 ```text
-isLoggingIn
-loginError
+isPending
+error
+mutateAsync
+reset
 ```
 
-dans Pinia.
+Il n’est pas nécessaire de recréer ces états dans Pinia.
+
+La mutation de login possède également :
+
+```text
+retry: false
+networkMode: always
+gcTime: 0
+```
+
+Le login ne doit pas être rejoué automatiquement après un échec réseau.
 
 ---
 
-## Succès de connexion
+# Succès de connexion
 
-Après validation réussie :
+Le `onSuccess` de `useLogin()` effectue :
 
-1. le cache de données de la session précédente est nettoyé ;
-2. le nouveau token est conservé ;
-3. l’agent retourné par `getAgent()` est placé dans le cache ;
-4. l’utilisateur est redirigé vers l’overview.
+```ts
+auth.setToken(token)
 
-L’agent n’a donc pas besoin d’être immédiatement rechargé après la navigation.
+auth.setAgentSymbol(agent.symbol)
 
-La query :
+queryClient.removeQueries()
+
+queryClient.setQueryData(['agent', 'current'], agent)
+```
+
+La réponse déjà obtenue pendant la validation est donc réutilisée.
+
+Le parcours évite :
+
+```text
+login
+→ GET /my/agent
+
+navigation overview
+→ GET /my/agent immédiatement à nouveau
+```
+
+---
+
+# Cache et changement de session
+
+Les query keys ne contiennent volontairement pas le token.
+
+Exemple :
+
+```ts
+;['ships', 'list', { page, limit }]
+```
+
+et non :
+
+```ts
+['ships', token, 'list', ...]
+```
+
+L’application représente une seule session active à la fois.
+
+Lors d’un changement d’agent, le cache précédent est donc supprimé.
+
+Cela empêche d’afficher temporairement :
+
+```text
+ships de l'agent précédent
+systems de l'agent précédent
+market de l'agent précédent
+```
+
+dans la nouvelle session.
+
+---
+
+# Objet Agent
+
+Le véritable objet Agent reste dans TanStack Query :
 
 ```ts
 ;['agent', 'current']
 ```
 
-dispose déjà de la réponse obtenue pendant la connexion.
-
----
-
-## Nettoyage du cache
-
-Le QueryCache est associé à la session active.
-
-Lors d’un changement d’agent, les anciennes données doivent être supprimées.
-
-Le nettoyage concerne donc potentiellement :
+Il contient notamment :
 
 ```text
-agent
-fleet
-ship details
-systems
-waypoints
-markets
+symbol
+headquarters
+credits
+startingFaction
+shipCount
 ```
 
-Le projet ne place pas le token dans les query keys pour isoler artificiellement plusieurs sessions.
-
-Une seule session active est représentée à la fois.
+`agentSymbol` dans Auth n’est qu’un snapshot minimal utilisé par l’interface globale.
 
 ---
 
-## Déconnexion
+# Restauration d’une session
 
-Le logout effectue principalement :
-
-```text
-clearToken()
-+
-QueryCache.clear()
-+
-navigation login
-```
-
-L’application ne doit pas conserver les ressources de l’agent précédent après la déconnexion.
-
----
-
-## Rejet d’authentification pendant une query
-
-Un token peut devenir invalide après une connexion réussie.
-
-Le client HTTP et la configuration de query traitent donc les erreurs d’authentification comme une fin de session.
-
-Lorsque le rejet correspond réellement à un problème d’authentification :
+Au chargement du store :
 
 ```text
 token
-→ supprimé
-
-cache
-→ nettoyé
-
-application
-→ retour vers login
+→ relu depuis localStorage
 ```
 
-Une erreur réseau ou une limitation HTTP ne doit pas provoquer le même comportement.
+Si un token existe, `agentSymbol` peut également être restauré.
 
-Par exemple :
+Le routeur peut alors autoriser l’accès aux routes protégées.
+
+Les données serveur, elles, ne sont pas persistées.
+
+Après un refresh :
 
 ```text
-429
-≠
-logout
+session locale
+→ restaurée
+
+server state
+→ rechargé par TanStack Query lorsqu'il est nécessaire
 ```
 
 ---
 
-## Garde de navigation
+# Validité d’une session restaurée
 
-Les routes métier nécessitent un token présent.
+La présence d’un token local ne constitue pas une validation serveur.
 
-Sans token, un utilisateur tentant d’accéder directement à une route protégée est redirigé vers :
+Un token restauré peut être :
+
+```text
+expiré
+révoqué
+invalide
+```
+
+Lorsqu’une query authentifiée utilise ce token, SpaceTraders reste la source de vérité.
+
+Si l’API rejette l’authentification, la session est supprimée.
+
+---
+
+# Erreurs d’authentification globales
+
+Le `QueryClient` possède un `QueryCache` avec un traitement global des erreurs d’authentification.
+
+Lorsqu’une query retourne :
+
+```text
+ApiError
+kind = authentication
+```
+
+et qu’une session est active :
+
+```text
+clearToken()
+    ↓
+queryClient.clear()
+```
+
+Le store perd alors :
+
+```text
+token
+agentSymbol
+```
+
+et leurs valeurs persistées sont supprimées.
+
+---
+
+# Retour automatique vers Login
+
+`AppLayout` observe :
+
+```ts
+auth.hasToken
+```
+
+Lorsque cette valeur devient fausse :
+
+```text
+AppLayout
+→ router.replace(login)
+```
+
+Une session rejetée par SpaceTraders provoque donc automatiquement :
+
+```text
+erreur d'authentification
+    ↓
+session nettoyée
+    ↓
+cache nettoyé
+    ↓
+retour Login
+```
+
+Chaque page n’a pas besoin de réimplémenter ce comportement.
+
+---
+
+# Déconnexion
+
+Le logout utilise :
+
+```ts
+auth.clearToken()
+```
+
+dans un `try/finally`, puis :
+
+```ts
+queryClient.clear()
+```
+
+Le nettoyage du cache est donc exécuté même si la suppression du storage rencontre un problème.
+
+La disparition du token entraîne ensuite le retour vers `/login` via `AppLayout`.
+
+---
+
+# Protection des routes
+
+Le routeur utilise :
+
+```text
+meta.requiresAuth
+```
+
+sur `AppLayout`.
+
+Toutes ses routes enfants sont ainsi protégées :
+
+```text
+/
+fleet
+ship detail
+systems
+system detail
+waypoint detail
+market
+```
+
+Lorsqu’aucun token n’est présent :
+
+```text
+route protégée
+→ /login
+```
+
+---
+
+# Route Login
+
+L’inverse est également traité.
+
+Lorsqu’un utilisateur déjà authentifié ouvre :
 
 ```text
 /login
 ```
 
-Exemples de routes protégées :
+le routeur le redirige vers :
 
 ```text
-/
- /fleet
- /fleet/:symbol
- /systems
- /systems/:systemSymbol
- /systems/:systemSymbol/waypoints/:waypointSymbol
- /systems/:systemSymbol/waypoints/:waypointSymbol/market
+agent overview
 ```
 
-La garde vérifie la présence locale de la session.
-
-La validité serveur est ensuite confirmée par les appels API.
+Cela évite d’exposer inutilement un nouveau formulaire de connexion pendant une session active.
 
 ---
 
-## Route Login
+# Client HTTP et dépendances explicites
 
-Lorsqu’une session locale existe déjà, la page Login n’a pas vocation à devenir le point d’entrée normal de l’utilisateur.
+Les fonctions API reçoivent toujours le token explicitement.
 
-Le routeur peut donc rediriger vers l’application selon la configuration prévue.
-
-Le contrôle principal reste cependant le comportement des routes protégées.
-
----
-
-## Client HTTP
-
-Les fonctions API reçoivent toujours le token explicitement :
+Exemples :
 
 ```ts
 getAgent(token)
 
 getShips(token, params)
 
-getSystem(token, symbol)
+getShip(token, symbol)
+
+getSystem(token, systemSymbol)
 
 getMarket(token, systemSymbol, waypointSymbol)
 ```
 
-Le client HTTP ajoute ensuite :
+Le client HTTP construit ensuite :
 
 ```http
 Authorization: Bearer <token>
 ```
 
-La fonction API reste indépendante de Pinia.
+Les fonctions API restent indépendantes de Pinia.
 
 ---
 
-## Pourquoi ne pas utiliser un interceptor lisant Pinia ?
+# Pourquoi ne pas lire Pinia depuis Axios ?
 
-Lire le store directement dans un interceptor Axios aurait réduit le nombre de paramètres mais créé une dépendance implicite :
+Un interceptor Axios qui lirait directement Auth produirait une dépendance implicite :
 
 ```text
-API function
+API
 ↓
-global Axios
+Axios global
 ↓
 Pinia
 ```
 
-Le projet préfère rendre la dépendance visible :
+Le projet préfère :
 
 ```ts
 getShip(token, symbol)
 ```
 
-Cela simplifie :
+La dépendance devient visible dans la signature.
 
-- tests unitaires ;
-- tests d’intégration ;
-- raisonnement sur le token utilisé ;
-- vérification d’un token candidat avant login.
+Cela facilite :
+
+```text
+tests
+raisonnement
+validation d'un token candidat
+réutilisation des fonctions API
+```
 
 ---
 
-## Annulation des requêtes
+# Annulation des requêtes
 
-Les queries utilisent le signal fourni par TanStack Query :
+Les queries TanStack Query transmettent leur `AbortSignal` aux fonctions API :
 
 ```ts
 queryFn: ({ signal }) => getShip(token, symbol, signal)
 ```
 
-Le signal est transmis jusqu’à Axios.
+Le signal est ensuite propagé jusqu’à Axios.
 
-Le login ne crée pas de `AbortController` manuel supplémentaire.
-
-La mutation reste suffisamment simple pour ce périmètre.
+Il n’est pas nécessaire de créer un `AbortController` spécifique dans chaque composant.
 
 ---
 
-## Sécurité
+# États de la page Login
 
-Le projet ne doit jamais contenir de token réel dans :
+L’interface distingue notamment :
 
-- le repository ;
-- les fixtures ;
-- les tests ;
-- les captures ;
-- les fichiers `.env` versionnés ;
-- les logs.
+| Situation                  | Comportement                           |
+| -------------------------- | -------------------------------------- |
+| Token vide                 | Erreur locale, aucune requête          |
+| Validation en cours        | Bouton désactivé et état de chargement |
+| Token valide               | Création de session puis navigation    |
+| Token rejeté               | Erreur affichée, aucune session créée  |
+| Erreur réseau              | Erreur affichée sans retry automatique |
+| Token modifié après erreur | L’erreur précédente est réinitialisée  |
+| Double soumission          | Une seule requête est envoyée          |
+| Storage indisponible       | La session n’est pas ouverte           |
 
-Les tests utilisent uniquement de faux tokens.
+Le champ reprend également le focus après une erreur de validation locale.
 
-Exemple :
+---
+
+# Accessibilité
+
+Le formulaire utilise notamment :
 
 ```text
-agent-test-token
+Label explicite
+aria-invalid
+aria-describedby
+role="alert"
+role="status"
+aria-busy
+focus restauré sur erreur locale
+bouton Show / Hide nommé
+```
+
+Les locators utilisés dans les tests E2E reposent sur ces noms accessibles.
+
+Exemples :
+
+```ts
+page.getByRole('textbox', {
+  name: 'Agent token',
+})
+
+page.getByRole('button', {
+  name: 'Connect',
+})
+```
+
+---
+
+# Sécurité
+
+Aucun token réel ne doit être présent dans :
+
+```text
+repository
+fixtures
+tests
+captures
+logs
+fichiers .env versionnés
+```
+
+Les tests utilisent uniquement des tokens fictifs.
+
+Exemples :
+
+```text
+test-agent-token
+e2e-agent-token
 e2e-systems-market-token
 ```
 
----
+Le token n’est pas chiffré avant stockage local.
 
-## Affichage du token
+Un chiffrement dont la clé serait elle-même disponible côté frontend ne fournirait pas une protection utile contre un script exécuté dans le même contexte.
 
-Le champ de connexion utilise un champ masqué par défaut.
-
-L’utilisateur peut contrôler temporairement sa visibilité via le bouton prévu dans l’interface.
-
-Ce bouton possède son propre libellé accessible, distinct du champ.
-
-Exemple :
-
-```text
-Agent token
-
-Show agent token
-```
-
-Cette distinction est également importante pour les tests Playwright afin d’utiliser des locators accessibles et non ambigus.
+Le choix principal reste donc d’éviter toute fuite ou version accidentelle.
 
 ---
 
-## États de connexion
-
-L’interface doit distinguer :
-
-| Situation                    | Comportement                                                                |
-| ---------------------------- | --------------------------------------------------------------------------- |
-| Champ vide                   | Validation locale, aucune requête                                           |
-| Token en cours de validation | Bouton en chargement                                                        |
-| Token valide                 | Session créée et navigation                                                 |
-| Token refusé                 | Erreur affichée, candidat non persisté                                      |
-| Erreur réseau                | Message approprié, pas de fausse authentification                           |
-| Session existante            | Données déjà chargées conservées tant qu’un nouveau token n’est pas accepté |
-
----
-
-## Tests
+# Tests
 
 Les tests Auth couvrent notamment :
 
-- protection des routes ;
-- token vide ;
-- validation du token via `/my/agent` ;
-- persistance seulement après succès ;
-- rejet d’un token invalide ;
-- restauration du token depuis `localStorage` ;
-- déconnexion ;
-- nettoyage du cache ;
-- séparation entre session locale et données serveur.
+```text
+route protégée sans session
+validation locale d'un token vide
+connexion avec une seule requête
+persistance du token
+persistance de agentSymbol
+nettoyage du cache précédent
+token rejeté
+reset d'une erreur après modification du champ
+erreur de localStorage
+échec réseau sans replay automatique
+restauration de session
+rejet d'un token restauré
+expiration après connexion
+double soumission
+logout
+```
 
 Les appels réseau sont simulés avec MSW.
 
-Aucun test n’utilise un token SpaceTraders réel.
+Les tests n’utilisent jamais le service SpaceTraders réel.
 
 ---
 
-## Interaction avec Agent
+# E2E
 
-Auth et Agent restent séparés.
+Le scénario Playwright principal vérifie également :
 
 ```text
-Auth
-→ connaît le token
+route protégée
+→ Login
 
-Agent
-→ connaît la ressource Agent
+Login
+→ Agent overview
+
+reload
+→ session restaurée
+
+Fleet
+→ Ship detail
+
+Sign out
+→ Login
+
+reload
+→ ancienne session absente
+
+URL protégée directe
+→ Login
 ```
 
-Lors du login, Auth appelle toutefois `getAgent()` pour vérifier le token.
+Ce scénario protège le cycle de vie complet de la session dans un navigateur réel.
 
-La réponse est ensuite directement injectée dans le cache :
+---
 
-```ts
-;['agent', 'current']
-```
+# Limites actuelles
 
-Ce comportement évite :
+La version actuelle ne gère pas :
 
 ```text
-login
-→ GET /my/agent
-
-navigation
-→ GET /my/agent à nouveau immédiatement
+refresh token
+synchronisation multi-onglets
+session serveur
+cookie HttpOnly
+expiration proactive
+BroadcastChannel
 ```
 
----
+Ces besoins dépendraient d’un contexte de production différent et d’un backend applicatif contrôlé par le projet.
 
-## Interaction avec TanStack Query
-
-La configuration globale de Query doit tenir compte du changement de session.
-
-Le cache n’est pas persistant dans `localStorage`.
-
-Après rechargement :
-
-```text
-token
-→ restauré
-
-server data
-→ rechargées lorsque nécessaires
-```
-
-Cela évite de conserver durablement dans le navigateur des ressources susceptibles d’être obsolètes.
-
----
-
-## Choix volontairement non implémentés
-
-### Synchronisation multi-onglets
-
-Une connexion ou déconnexion effectuée dans un onglet n’est pas propagée activement à tous les autres onglets déjà ouverts.
-
-Une évolution pourrait écouter :
-
-```text
-storage event
-```
-
-ou utiliser `BroadcastChannel`.
-
-Ce comportement n’est pas nécessaire au parcours principal du test.
-
----
-
-### Refresh token
-
-Le projet n’implémente pas de refresh token.
-
-Le modèle d’authentification utilisé dépend directement du token fourni par SpaceTraders.
-
----
-
-### Session serveur
-
-Il n’existe pas de backend intermédiaire contrôlé par l’application.
-
-Le projet n’utilise donc pas :
-
-```text
-HttpOnly cookie
-server session
-BFF
-```
-
-Une architecture de production pourrait faire un autre choix.
-
----
-
-### Chiffrement local du token
-
-Le token n’est pas « chiffré » avant son stockage dans le navigateur.
-
-Un chiffrement dont la clé serait également disponible côté frontend ne protégerait pas réellement le secret contre un script exécuté dans le même contexte.
-
-La priorité reste donc :
-
-- ne jamais versionner le token ;
-- limiter son usage au besoin ;
-- éviter les manipulations inutiles ;
-- rester explicite sur le compromis de sécurité.
-
----
-
-### Annulation explicite du login
-
-Une validation de token déjà lancée n’est pas explicitement annulée lorsque l’utilisateur navigue immédiatement ailleurs.
-
-Le flux actuel reste simple et suffisant pour cette version.
-
-Une évolution pourrait transmettre un signal à la mutation si ce comportement devenait réellement nécessaire.
-
----
-
-## Évolutions possibles
-
-Avec davantage de besoins, Auth pourrait évoluer vers :
-
-- synchronisation multi-onglets ;
-- gestion plus fine d’expiration ;
-- backend-for-frontend ;
-- session serveur ;
-- cookies HttpOnly ;
-- politiques de sécurité adaptées au contexte de production ;
-- audit plus complet des événements d’authentification.
-
-Ces évolutions dépendraient principalement de l’architecture backend et du modèle de menace réel, qui sortent du périmètre du test frontend actuel.
+Ils ne sont pas nécessaires au périmètre actuel.
