@@ -90,6 +90,11 @@ Lucide icons
 visual language
 Design System
 documentation
+
+- Shared semantic data tables built with TanStack Table
+- Table/card view modes for Fleet and Systems
+- Exploratory system cards with waypoint composition summaries
+- Refined responsive layouts and navigation
 ```
 
 Cette seconde passe ne remplace pas l’architecture fonctionnelle de la V1.

@@ -1753,11 +1753,42 @@ La table est donc la représentation par défaut.
 
 ---
 
-## Cards pour les détails hétérogènes
+## View modes
 
-Traits, modifiers et orbitals possèdent une structure plus descriptive et ne bénéficient pas d’une comparaison colonne par colonne.
+Systems supports two complementary representations.
 
-Ils restent donc présentés sous forme de surfaces indépendantes.
+### Table
+
+Optimized for comparison across systems:
+
+- identity;
+- type;
+- sector;
+- coordinates;
+- waypoint count;
+- factions.
+
+### Cards
+
+Optimized for exploration.
+
+A system card emphasizes:
+
+- system identity and type;
+- constellation and sector context;
+- known waypoint composition;
+- faction presence;
+- coordinates as secondary information;
+- direct system exploration.
+
+The card intentionally does not mirror the table row.
+
+Known waypoint types are summarized to provide useful context before opening
+the system detail page.
+
+The selected mode is local UI state owned by `SystemsPage`. Switching modes
+does not modify routing or server state and does not trigger another API
+request.
 
 ---
 

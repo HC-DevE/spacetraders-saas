@@ -1011,6 +1011,30 @@ Elle protège ainsi le langage visuel partagé des tables.
 
 ---
 
+### View mode toggle
+
+`ViewModeToggle` switches between table and card presentations when both
+representations provide distinct value.
+
+- **Table** is optimized for comparison and information density.
+- **Cards** are optimized for exploration and contextual reading.
+- The active mode is local presentation state owned by the consuming page.
+- Use Vue `ref()` for this state.
+- Do not put the view mode in TanStack Query keys.
+- Do not use Pinia for it.
+- Do not put it in the URL unless the presentation itself becomes meaningfully shareable.
+- Do not persist it unless persistence becomes an explicit product requirement.
+- Do not introduce a card view merely to reproduce a table row vertically.
+  A card view should provide a different information hierarchy or contextual
+  summary.
+
+Current consumers:
+
+- Fleet
+- Systems
+
+---
+
 # Structured surfaces
 
 Cette section montre les deux catégories utilisées par les pages détaillées :

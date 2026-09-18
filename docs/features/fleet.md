@@ -1234,16 +1234,33 @@ Cette séparation permet de partager le mécanisme de table sans déplacer les r
 
 ---
 
-## Cards conservées
+## View modes
 
-Les cartes ne sont pas supprimées simplement parce que la représentation par défaut est devenue une table.
+Fleet supports two local presentation modes.
 
-Elles restent disponibles pour une évolution réelle et identifiable :
+### Table
 
-```text
-view mode
-Cards / Table
-```
+The default view.
+
+Designed for comparing ships across common operational fields such as
+navigation state, location, fuel and cargo.
+
+### Cards
+
+Designed for inspecting ships as individual operational units.
+
+Ship information is grouped contextually rather than reproducing the table
+column structure.
+
+The selected view mode:
+
+- is local to `FleetPage`;
+- defaults to `table`;
+- is implemented with Vue `ref()`;
+- does not modify the URL;
+- does not modify the ships query key;
+- does not trigger a server refetch;
+- remains active while pagination changes because the page component remains mounted.
 
 ---
 
