@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { useRouter } from 'vue-router'
 
+import { routeNames } from '@/app/router/route-names'
 import AppButton from '@/shared/components/AppButton.vue'
+import { formatLabel } from '@/shared/utils/formatters'
 
 import type { System } from '../schemas/system.schema'
-import { formatLabel } from '@/shared/utils/formatters'
-import { routeNames } from '@/app/router/route-names'
 
 const props = defineProps<{
   system: System
@@ -25,78 +25,97 @@ function viewDetails() {
 
 <template>
   <article
-    class="flex min-w-0 flex-col rounded-xl border bg-card p-5 text-card-foreground shadow-sm wrap-anywhere"
+    class="grid min-w-0 gap-5 bg-card px-4 py-4 text-card-foreground lg:grid-cols-[minmax(0,1.45fr)_minmax(0,0.9fr)_minmax(0,1.2fr)_minmax(0,0.85fr)_minmax(0,0.7fr)_minmax(0,1fr)_auto] lg:items-center lg:gap-4"
   >
-    <header class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-      <div class="min-w-0">
-        <h2 class="text-lg font-semibold leading-snug">
-          {{ system.name || system.symbol }}
-        </h2>
+    <!-- System -->
+    <div class="min-w-0">
+      <p class="truncate font-mono text-sm font-medium text-foreground" :title="system.symbol">
+        {{ system.symbol }}
+      </p>
 
-        <p v-if="system.name" class="mt-1 text-xs text-muted-foreground">
-          {{ system.symbol }}
-        </p>
-
-        <p class="mt-2 text-sm text-muted-foreground">
-          Sector
-          <span class="font-medium text-foreground">
-            {{ system.sectorSymbol }}
-          </span>
-        </p>
-      </div>
-
-      <AppButton
-        type="button"
-        variant="secondary"
-        size="sm"
-        :aria-label="`View system ${system.symbol}`"
-        class="shrink-0"
-        @click="viewDetails"
+      <p
+        v-if="system.name"
+        class="mt-1 truncate text-xs text-muted-foreground"
+        :title="system.name"
       >
-        View details
-      </AppButton>
-    </header>
+        {{ system.name }}
+      </p>
+    </div>
 
-    <div class="mt-4 flex flex-wrap items-center gap-2">
-      <span
-        class="rounded-full bg-secondary px-2.5 py-1 text-xs font-semibold capitalize text-secondary-foreground"
-      >
+    <!-- Type -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">Type</p>
+
+      <p class="mt-1 text-sm capitalize text-orbit lg:mt-0">
         {{ formatLabel(system.type) }}
-      </span>
+      </p>
+    </div>
 
-      <p v-if="system.constellation" class="text-xs text-muted-foreground">
+    <!-- Sector -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">Sector</p>
+
+      <p class="mt-1 truncate font-mono text-sm lg:mt-0" :title="system.sectorSymbol">
+        {{ system.sectorSymbol }}
+      </p>
+
+      <p
+        v-if="system.constellation"
+        class="mt-1 truncate text-xs text-muted-foreground"
+        :title="system.constellation"
+      >
         {{ system.constellation }}
       </p>
     </div>
 
-    <dl class="mt-5 grid gap-3 sm:grid-cols-2">
-      <div class="rounded-lg bg-muted p-4">
-        <dt class="text-xs font-medium text-muted-foreground">Coordinates</dt>
+    <!-- Coordinates -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">Coordinates</p>
 
-        <dd class="mt-2 font-semibold tabular-nums">{{ system.x }}, {{ system.y }}</dd>
-      </div>
+      <p class="mt-1 font-mono text-sm tabular-nums lg:mt-0">
+        {{ system.x }},
+        {{ system.y }}
+      </p>
+    </div>
 
-      <div class="rounded-lg bg-muted p-4">
-        <dt class="text-xs font-medium text-muted-foreground">Waypoints</dt>
+    <!-- Waypoints -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">Waypoints</p>
 
-        <dd class="mt-2 text-lg font-semibold tabular-nums">
-          {{ system.waypoints.length }}
-        </dd>
-      </div>
-    </dl>
+      <p class="mt-1 font-mono text-sm tabular-nums lg:mt-0">
+        {{ system.waypoints.length }}
+      </p>
+    </div>
 
-    <div v-if="system.factions.length" class="mt-5 border-t pt-4">
-      <p class="text-sm font-medium">Factions</p>
+    <!-- Factions -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">Factions</p>
 
-      <ul class="mt-3 flex flex-wrap gap-2">
+      <ul v-if="system.factions.length" class="mt-1 flex flex-wrap gap-x-2 gap-y-1 lg:mt-0">
         <li
           v-for="faction in system.factions"
           :key="faction.symbol"
-          class="rounded-full border bg-muted px-3 py-1 text-xs font-medium capitalize"
+          class="font-mono text-xs text-muted-foreground"
         >
           {{ formatLabel(faction.symbol) }}
         </li>
       </ul>
+
+      <p v-else class="mt-1 text-xs text-muted-foreground lg:mt-0">None</p>
+    </div>
+
+    <!-- Action -->
+    <div class="flex lg:justify-end">
+      <AppButton
+        type="button"
+        variant="outline"
+        size="sm"
+        :aria-label="`View system ${system.symbol}`"
+        class="h-8 shrink-0 px-3 text-xs"
+        @click="viewDetails"
+      >
+        Details
+      </AppButton>
     </div>
   </article>
 </template>

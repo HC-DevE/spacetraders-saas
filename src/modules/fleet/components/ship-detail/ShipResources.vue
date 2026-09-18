@@ -1,126 +1,156 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 import { formatDate, formatNumber } from '@/shared/utils/formatters'
+
 import type { Ship } from '../../schemas/ship.schema'
 import { percentage } from '../../utils/ship-formatters'
 
-defineProps<{
+const props = defineProps<{
   fuel: Ship['fuel']
   cargo: Ship['cargo']
   crew: Ship['crew']
 }>()
+
+const fuelPercentage = computed(() => percentage(props.fuel.current, props.fuel.capacity))
+
+const cargoPercentage = computed(() => percentage(props.cargo.units, props.cargo.capacity))
+
+const crewPercentage = computed(() => percentage(props.crew.current, props.crew.capacity))
 </script>
 
 <template>
-  <div class="min-w-0 space-y-4 wrap-anywhere">
-    <section aria-label="Ship resources" class="grid gap-4 md:grid-cols-3">
-      <article
-        class="flex min-w-0 flex-col rounded-xl border bg-card p-5 text-card-foreground shadow-sm"
-      >
-        <h2 class="text-sm font-medium text-muted-foreground">Fuel</h2>
+  <section aria-label="Ship resources" class="min-w-0">
+    <header class="mb-3">
+      <h2 class="text-base font-semibold">Resources</h2>
+
+      <p class="mt-1 text-sm text-muted-foreground">Current operational capacity.</p>
+    </header>
+
+    <div class="grid gap-px overflow-hidden border border-border bg-border md:grid-cols-3">
+      <!-- Fuel -->
+      <article class="bg-card p-5">
+        <p class="text-xs text-muted-foreground">Fuel</p>
 
         <template v-if="fuel.capacity > 0">
-          <p class="mt-3">
-            <span class="text-2xl font-semibold tabular-nums">
+          <p class="mt-3 font-mono">
+            <span
+              class="text-2xl font-medium tabular-nums"
+              :class="fuel.current === 0 ? 'text-alert' : 'text-foreground'"
+            >
               {{ formatNumber(fuel.current) }}
             </span>
-            <span class="text-sm text-muted-foreground"> / {{ formatNumber(fuel.capacity) }} </span>
+
+            <span class="text-sm text-muted-foreground"> /{{ formatNumber(fuel.capacity) }} </span>
           </p>
 
-          <div aria-hidden="true" class="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+          <div aria-hidden="true" class="mt-4 h-px bg-muted">
             <div
-              class="h-full rounded-full bg-primary"
-              :style="{ width: `${percentage(fuel.current, fuel.capacity)}%` }"
+              class="h-px"
+              :class="fuel.current === 0 ? 'bg-alert' : 'bg-signal'"
+              :style="{
+                width: `${fuelPercentage}%`,
+              }"
             />
           </div>
         </template>
 
-        <p v-else class="mt-3 text-lg font-semibold">No fuel tank</p>
+        <p v-else class="mt-3 text-lg font-medium">No fuel tank</p>
 
-        <p class="mt-3 text-sm text-muted-foreground">Fuel currently available</p>
+        <p class="mt-3 text-xs text-muted-foreground">Fuel currently available</p>
 
         <p
           v-if="fuel.capacity > 0 && fuel.current === 0"
-          class="mt-3 rounded-lg bg-warning-subtle p-3 text-sm text-warning"
+          class="mt-3 text-xs font-medium text-alert"
         >
           Fuel tank is empty.
         </p>
       </article>
 
-      <article
-        class="flex min-w-0 flex-col rounded-xl border bg-card p-5 text-card-foreground shadow-sm"
-      >
-        <h2 class="text-sm font-medium text-muted-foreground">Cargo</h2>
+      <!-- Cargo -->
+      <article class="bg-card p-5">
+        <p class="text-xs text-muted-foreground">Cargo</p>
 
         <template v-if="cargo.capacity > 0">
-          <p class="mt-3">
-            <span class="text-2xl font-semibold tabular-nums">
+          <p class="mt-3 font-mono">
+            <span class="text-2xl font-medium tabular-nums">
               {{ formatNumber(cargo.units) }}
             </span>
-            <span class="text-sm text-muted-foreground">
-              / {{ formatNumber(cargo.capacity) }}
-            </span>
+
+            <span class="text-sm text-muted-foreground"> /{{ formatNumber(cargo.capacity) }} </span>
           </p>
 
-          <div aria-hidden="true" class="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+          <div aria-hidden="true" class="mt-4 h-px bg-muted">
             <div
-              class="h-full rounded-full bg-primary"
-              :style="{ width: `${percentage(cargo.units, cargo.capacity)}%` }"
+              class="h-px bg-orbit"
+              :style="{
+                width: `${cargoPercentage}%`,
+              }"
             />
           </div>
         </template>
 
-        <p v-else class="mt-3 text-lg font-semibold">No cargo hold</p>
+        <p v-else class="mt-3 text-lg font-medium">No cargo hold</p>
 
-        <p class="mt-3 text-sm text-muted-foreground">Occupied cargo capacity</p>
+        <p class="mt-3 text-xs text-muted-foreground">Occupied cargo capacity</p>
       </article>
 
-      <article
-        class="flex min-w-0 flex-col rounded-xl border bg-card p-5 text-card-foreground shadow-sm"
-      >
-        <h2 class="text-sm font-medium text-muted-foreground">Crew</h2>
+      <!-- Crew -->
+      <article class="bg-card p-5">
+        <p class="text-xs text-muted-foreground">Crew</p>
 
         <template v-if="crew.capacity > 0">
-          <p class="mt-3">
-            <span class="text-2xl font-semibold tabular-nums">
+          <p class="mt-3 font-mono">
+            <span
+              class="text-2xl font-medium tabular-nums"
+              :class="crew.current < crew.required ? 'text-alert' : 'text-foreground'"
+            >
               {{ formatNumber(crew.current) }}
             </span>
-            <span class="text-sm text-muted-foreground"> / {{ formatNumber(crew.capacity) }} </span>
+
+            <span class="text-sm text-muted-foreground"> /{{ formatNumber(crew.capacity) }} </span>
           </p>
 
-          <div aria-hidden="true" class="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+          <div aria-hidden="true" class="mt-4 h-px bg-muted">
             <div
-              class="h-full rounded-full bg-primary"
-              :style="{ width: `${percentage(crew.current, crew.capacity)}%` }"
+              class="h-px"
+              :class="crew.current < crew.required ? 'bg-alert' : 'bg-orbit'"
+              :style="{
+                width: `${crewPercentage}%`,
+              }"
             />
           </div>
         </template>
 
-        <p v-else class="mt-3 text-lg font-semibold">No crew capacity</p>
+        <p v-else class="mt-3 text-lg font-medium">No crew capacity</p>
 
-        <p class="mt-3 text-sm text-muted-foreground">
-          {{ formatNumber(crew.required) }} crew required
+        <p class="mt-3 text-xs text-muted-foreground">
+          <span class="font-mono">
+            {{ formatNumber(crew.required) }}
+          </span>
+          crew required
         </p>
 
-        <p
-          v-if="crew.current < crew.required"
-          class="mt-3 rounded-lg bg-warning-subtle p-3 text-sm text-warning"
-        >
+        <p v-if="crew.current < crew.required" class="mt-3 text-xs font-medium text-alert">
           Crew is below the required minimum.
         </p>
       </article>
-    </section>
+    </div>
 
     <div
       v-if="fuel.consumed"
-      class="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-lg bg-muted px-4 py-3 text-sm"
+      class="flex flex-wrap items-baseline gap-x-2 gap-y-1 border-x border-b border-border bg-background px-4 py-3 text-xs"
     >
-      <p class="text-muted-foreground">Last recorded fuel consumption:</p>
+      <span class="text-muted-foreground"> Last fuel consumption </span>
 
-      <p class="font-medium">{{ formatNumber(fuel.consumed.amount) }} units</p>
+      <span class="font-mono text-foreground">
+        {{ formatNumber(fuel.consumed.amount) }}
+        units
+      </span>
 
-      <time :datetime="fuel.consumed.timestamp" class="text-muted-foreground">
+      <time :datetime="fuel.consumed.timestamp" class="font-mono text-muted-foreground">
         {{ formatDate(fuel.consumed.timestamp) }}
       </time>
     </div>
-  </div>
+  </section>
 </template>

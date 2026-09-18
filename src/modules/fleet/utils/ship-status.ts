@@ -6,15 +6,27 @@ export function formatShipStatus(status: Ship['nav']['status'] | undefined): {
 } {
   switch (status) {
     case 'DOCKED':
-      return { label: 'Docked', className: 'bg-success-subtle text-success' }
+      return {
+        label: 'Docked',
+        className: 'text-muted-foreground',
+      }
 
     case 'IN_ORBIT':
-      return { label: 'In orbit', className: 'bg-secondary text-secondary-foreground' }
+      return {
+        label: 'In orbit',
+        className: 'text-orbit',
+      }
 
     case 'IN_TRANSIT':
-      return { label: 'In transit', className: 'bg-warning-subtle text-warning' }
+      return {
+        label: 'In transit',
+        className: 'text-signal',
+      }
 
     default:
-      return { label: 'Unknown status', className: 'bg-muted text-muted-foreground' }
+      return {
+        label: 'Unknown status',
+        className: 'text-muted-foreground',
+      }
   }
 }

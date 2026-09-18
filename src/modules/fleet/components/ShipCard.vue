@@ -2,19 +2,24 @@
 import { computed } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
 
+import { routeNames } from '@/app/router/route-names'
 import AppButton from '@/shared/components/AppButton.vue'
 import { formatDate, formatLabel, formatNumber } from '@/shared/utils/formatters'
 
 import type { Ship } from '../schemas/ship.schema'
 import { percentage } from '../utils/ship-formatters'
 import { formatShipStatus } from '../utils/ship-status'
-import { routeNames } from '@/app/router/route-names'
 
-const props = defineProps<{ ship: Ship }>()
+const props = defineProps<{
+  ship: Ship
+}>()
+
 const router = useRouter()
 
 const isInTransit = computed(() => props.ship.nav.status === 'IN_TRANSIT')
+
 const status = computed(() => formatShipStatus(props.ship.nav.status))
+
 const displayedLocation = computed(() =>
   isInTransit.value
     ? {
@@ -27,185 +32,177 @@ const displayedLocation = computed(() =>
       },
 )
 
+const fuelPercentage = computed(() => percentage(props.ship.fuel.current, props.ship.fuel.capacity))
+
+const isLowFuel = computed(() => props.ship.fuel.capacity > 0 && fuelPercentage.value <= 20)
+
 function viewDetails() {
   return router.push({
     name: routeNames.shipDetail,
-    params: { symbol: props.ship.symbol },
+    params: {
+      symbol: props.ship.symbol,
+    },
   })
 }
 </script>
 
 <template>
   <article
-    class="flex min-w-0 flex-col rounded-xl border bg-card p-5 text-card-foreground shadow-sm wrap-anywhere"
+    class="grid min-w-0 gap-5 bg-card px-4 py-4 text-card-foreground lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1.35fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_auto] lg:items-center lg:gap-4"
   >
-    <header class="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-      <div class="min-w-0">
-        <h2 class="text-lg font-semibold leading-snug">
-          {{ ship.registration.name || ship.symbol }}
-        </h2>
+    <!-- Ship -->
+    <div class="min-w-0">
+      <p class="truncate font-mono text-sm font-medium text-foreground" :title="ship.symbol">
+        {{ ship.symbol }}
+      </p>
 
-        <p v-if="ship.registration.name !== ship.symbol" class="mt-1 text-xs text-muted-foreground">
-          {{ ship.symbol }}
-        </p>
-
-        <p class="mt-2 text-sm text-muted-foreground">
-          <span class="capitalize">
-            {{ formatLabel(ship.registration.role) }}
-          </span>
-
-          <span aria-hidden="true"> · </span>
-
-          {{ ship.frame.name }}
-        </p>
-      </div>
-
-      <AppButton
-        type="button"
-        variant="secondary"
-        size="sm"
-        :aria-label="`View ship ${ship.symbol}`"
-        class="shrink-0"
-        @click="viewDetails"
+      <p
+        v-if="ship.registration.name && ship.registration.name !== ship.symbol"
+        class="mt-1 truncate text-xs text-muted-foreground"
       >
-        View details
-      </AppButton>
-    </header>
-
-    <div class="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-      <span class="rounded-full px-2.5 py-1 text-xs font-semibold" :class="status.className">
-        {{ status.label }}
-      </span>
-
-      <p class="text-xs text-muted-foreground">
-        Flight mode:
-        <span class="font-medium capitalize text-foreground">
-          {{ formatLabel(ship.nav.flightMode) }}
-        </span>
+        {{ ship.registration.name }}
       </p>
     </div>
 
-    <section class="mt-5 rounded-lg border bg-background p-4">
-      <h3 class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        {{ isInTransit ? 'Destination' : 'Location' }}
-      </h3>
+    <!-- Role -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">Role</p>
 
-      <dl class="mt-3 grid gap-4 sm:grid-cols-2">
-        <div class="min-w-0">
-          <dt class="text-xs text-muted-foreground">System</dt>
-          <dd class="mt-1 text-sm font-medium">
-            <RouterLink
-              :to="{
-                name: routeNames.systemDetail,
-                params: { systemSymbol: displayedLocation.systemSymbol },
-              }"
-              :aria-label="`Open system ${displayedLocation.systemSymbol}`"
-              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {{ displayedLocation.systemSymbol }}
-            </RouterLink>
-          </dd>
-        </div>
+      <p class="mt-1 text-sm capitalize lg:mt-0">
+        {{ formatLabel(ship.registration.role) }}
+      </p>
 
-        <div class="min-w-0">
-          <dt class="text-xs text-muted-foreground">Waypoint</dt>
-          <dd class="mt-1 text-sm font-medium">
-            <RouterLink
-              :to="{
-                name: routeNames.waypointDetail,
-                params: {
-                  systemSymbol: displayedLocation.systemSymbol,
-                  waypointSymbol: displayedLocation.waypointSymbol,
-                },
-              }"
-              :aria-label="`Open waypoint ${displayedLocation.waypointSymbol}`"
-              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              {{ displayedLocation.waypointSymbol }}
-            </RouterLink>
-          </dd>
-        </div>
-      </dl>
+      <p class="mt-1 truncate text-xs text-muted-foreground">
+        {{ ship.frame.name }}
+      </p>
+    </div>
 
-      <div v-if="isInTransit" class="mt-4 border-t pt-3">
-        <p class="text-xs text-muted-foreground">Expected arrival</p>
-        <p class="mt-1 text-sm font-medium">
-          <time :datetime="ship.nav.route.arrival">
-            {{ formatDate(ship.nav.route.arrival) }}
-          </time>
-        </p>
+    <!-- Status -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">Status</p>
+
+      <div
+        class="mt-1 flex items-center gap-2 text-sm font-medium lg:mt-0"
+        :class="status.className"
+      >
+        <span class="size-1.5 shrink-0 rounded-full bg-current" aria-hidden="true" />
+
+        <span>
+          {{ status.label }}
+        </span>
       </div>
-    </section>
 
-    <div class="mt-5 grid flex-1 gap-3 sm:grid-cols-2">
-      <section class="flex min-w-0 flex-col rounded-lg bg-muted p-4">
-        <h3 class="text-sm font-semibold">Fuel</h3>
+      <p class="mt-1 text-xs text-muted-foreground">
+        {{ formatLabel(ship.nav.flightMode) }}
+      </p>
+    </div>
 
-        <p class="mt-2 text-lg font-semibold tabular-nums">
-          <template v-if="ship.fuel.capacity > 0">
-            {{ formatNumber(ship.fuel.current) }}
-            <span class="text-sm font-normal text-muted-foreground">
-              / {{ formatNumber(ship.fuel.capacity) }}
-            </span>
-          </template>
-          <span v-else aria-hidden="true" class="text-muted-foreground">—</span>
-        </p>
+    <!-- Location -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">
+        {{ isInTransit ? 'Destination' : 'Location' }}
+      </p>
 
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ ship.fuel.capacity > 0 ? 'Available / capacity' : 'No fuel capacity' }}
-        </p>
+      <RouterLink
+        :to="{
+          name: routeNames.waypointDetail,
+          params: {
+            systemSymbol: displayedLocation.systemSymbol,
+            waypointSymbol: displayedLocation.waypointSymbol,
+          },
+        }"
+        :aria-label="`Open waypoint ${displayedLocation.waypointSymbol}`"
+        class="mt-1 block truncate rounded-sm font-mono text-sm text-foreground underline-offset-4 transition-colors hover:text-signal hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring lg:mt-0"
+        :title="displayedLocation.waypointSymbol"
+      >
+        {{ displayedLocation.waypointSymbol }}
+      </RouterLink>
 
-        <div class="mt-auto pt-3">
-          <div
-            aria-hidden="true"
-            class="h-2 overflow-hidden rounded-full bg-background"
-            :class="{ invisible: ship.fuel.capacity === 0 }"
-          >
-            <div
-              class="h-full rounded-full bg-primary"
-              :style="{ width: `${percentage(ship.fuel.current, ship.fuel.capacity)}%` }"
-            />
-          </div>
-        </div>
+      <RouterLink
+        :to="{
+          name: routeNames.systemDetail,
+          params: {
+            systemSymbol: displayedLocation.systemSymbol,
+          },
+        }"
+        :aria-label="`Open system ${displayedLocation.systemSymbol}`"
+        class="mt-1 block truncate rounded-sm font-mono text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        {{ displayedLocation.systemSymbol }}
+      </RouterLink>
 
+      <p v-if="isInTransit" class="mt-1 text-xs text-muted-foreground">
+        Expected arrival
+        <time class="font-mono" :datetime="ship.nav.route.arrival">
+          {{ formatDate(ship.nav.route.arrival) }}
+        </time>
+      </p>
+    </div>
+
+    <!-- Fuel -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">Fuel</p>
+
+      <template v-if="ship.fuel.capacity > 0">
         <p
-          v-if="ship.fuel.capacity > 0 && ship.fuel.current === 0"
-          class="mt-2 text-xs font-medium text-destructive"
+          class="mt-1 font-mono text-sm tabular-nums lg:mt-0"
+          :class="isLowFuel ? 'text-alert' : 'text-foreground'"
         >
-          Fuel tank is empty
-        </p>
-      </section>
-
-      <section class="flex min-w-0 flex-col rounded-lg bg-muted p-4">
-        <h3 class="text-sm font-semibold">Cargo</h3>
-
-        <p class="mt-2 text-lg font-semibold tabular-nums">
-          <template v-if="ship.cargo.capacity > 0">
-            {{ formatNumber(ship.cargo.units) }}
-            <span class="text-sm font-normal text-muted-foreground">
-              / {{ formatNumber(ship.cargo.capacity) }}
-            </span>
-          </template>
-          <span v-else aria-hidden="true" class="text-muted-foreground">—</span>
+          {{ formatNumber(ship.fuel.current) }}
+          <span class="text-muted-foreground"> /{{ formatNumber(ship.fuel.capacity) }} </span>
         </p>
 
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ ship.cargo.capacity > 0 ? 'Used / capacity' : 'No cargo capacity' }}
-        </p>
-
-        <div class="mt-auto pt-3">
+        <div aria-hidden="true" class="mt-2 h-px bg-muted">
           <div
-            aria-hidden="true"
-            class="h-2 overflow-hidden rounded-full bg-background"
-            :class="{ invisible: ship.cargo.capacity === 0 }"
-          >
-            <div
-              class="h-full rounded-full bg-primary"
-              :style="{ width: `${percentage(ship.cargo.units, ship.cargo.capacity)}%` }"
-            />
-          </div>
+            class="h-px"
+            :class="isLowFuel ? 'bg-alert' : 'bg-signal'"
+            :style="{
+              width: `${fuelPercentage}%`,
+            }"
+          />
         </div>
-      </section>
+
+        <p v-if="ship.fuel.current === 0" class="mt-1 text-xs text-alert">Fuel tank is empty.</p>
+      </template>
+
+      <p v-else class="mt-1 text-xs text-muted-foreground lg:mt-0">No fuel capacity</p>
+    </div>
+
+    <!-- Cargo -->
+    <div class="min-w-0">
+      <p class="text-xs text-muted-foreground lg:hidden">Cargo</p>
+
+      <template v-if="ship.cargo.capacity > 0">
+        <p class="mt-1 font-mono text-sm tabular-nums lg:mt-0">
+          {{ formatNumber(ship.cargo.units) }}
+          <span class="text-muted-foreground"> /{{ formatNumber(ship.cargo.capacity) }} </span>
+        </p>
+
+        <div aria-hidden="true" class="mt-2 h-px bg-muted">
+          <div
+            class="h-px bg-orbit"
+            :style="{
+              width: `${percentage(ship.cargo.units, ship.cargo.capacity)}%`,
+            }"
+          />
+        </div>
+      </template>
+
+      <p v-else class="mt-1 text-xs text-muted-foreground lg:mt-0">No cargo capacity</p>
+    </div>
+
+    <!-- Action -->
+    <div class="flex lg:justify-end">
+      <AppButton
+        type="button"
+        variant="outline"
+        size="sm"
+        :aria-label="`View ship ${ship.symbol}`"
+        class="h-8 shrink-0 px-3 text-xs"
+        @click="viewDetails"
+      >
+        Details
+      </AppButton>
     </div>
   </article>
 </template>

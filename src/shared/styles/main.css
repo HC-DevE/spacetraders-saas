@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap');
 
 @import 'tailwindcss';
 @import 'tw-animate-css';
@@ -6,49 +6,87 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  color-scheme: light;
+  color-scheme: dark;
 
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  /*
+   * Space Control palette
+   *
+   * Ink    — application background
+   * Panel  — elevated surfaces
+   * Signal — live / interactive accent
+   * Orbit  — informational state
+   * Alert  — critical / destructive state
+   * Paper  — primary content
+   */
+  --ink: #0c0d10;
+  --panel: #16181c;
+  --signal: #e8a33d;
+  --orbit: #7c9cb8;
+  --alert: #c1594a;
+  --paper: #e8e6e1;
 
-  --card: #ffffff;
-  --card-foreground: #0f172a;
+  /* Application semantic tokens */
+  --background: var(--ink);
+  --foreground: var(--paper);
 
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
+  --card: var(--panel);
+  --card-foreground: var(--paper);
 
-  --primary: #4338ca;
-  --primary-foreground: #ffffff;
+  --popover: var(--panel);
+  --popover-foreground: var(--paper);
 
-  --secondary: #e0e7ff;
-  --secondary-foreground: #312e81;
+  --primary: var(--signal);
+  --primary-foreground: var(--ink);
 
-  --muted: #f1f5f9;
-  --muted-foreground: #475569;
+  /*
+   * Neutral surfaces are deliberately close together.
+   * The UI relies on borders and spacing rather than
+   * large contrast changes or shadows.
+   */
+  --secondary: #202329;
+  --secondary-foreground: var(--paper);
 
-  --accent: #eef2ff;
-  --accent-foreground: #312e81;
+  --muted: #1c1f24;
+  --muted-foreground: #9298a3;
 
-  --destructive: #b91c1c;
-  --destructive-foreground: #ffffff;
+  --accent: #22262c;
+  --accent-foreground: var(--paper);
 
-  --success: #166534;
-  --success-subtle: #f0fdf4;
+  --destructive: var(--alert);
+  --destructive-foreground: var(--paper);
 
-  --warning: #854d0e;
-  --warning-subtle: #fefce8;
+  /*
+   * Existing semantic states remain available so current
+   * components do not need to change with the palette.
+   */
+  --success: var(--orbit);
+  --success-subtle: #141c22;
 
-  --danger-subtle: #fef2f2;
+  --warning: var(--signal);
+  --warning-subtle: #211a10;
 
-  --border: #cbd5e1;
-  --input: #64748b;
-  --ring: #4338ca;
+  --danger-subtle: #251614;
 
-  --radius: 0.75rem;
+  --border: #30343b;
+  --input: #3a3f48;
+  --ring: var(--signal);
+
+  /*
+   * Flatter than the previous dashboard style.
+   */
+  --radius: 0.375rem;
 }
 
 @theme inline {
+  /* Brand palette */
+  --color-ink: var(--ink);
+  --color-panel: var(--panel);
+  --color-signal: var(--signal);
+  --color-orbit: var(--orbit);
+  --color-alert: var(--alert);
+  --color-paper: var(--paper);
+
+  /* Semantic palette */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
 
@@ -85,20 +123,31 @@
   --color-input: var(--input);
   --color-ring: var(--ring);
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Typography */
+  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
   --font-heading: var(--font-sans);
+
+  /* Radius */
+  --radius-sm: calc(var(--radius) - 2px);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 2px);
+  --radius-xl: calc(var(--radius) + 4px);
 }
 
 @layer base {
   * {
-    @apply border-border;
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    background: var(--background);
   }
 
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply bg-background font-sans text-foreground antialiased;
 
     margin: 0;
     min-width: 320px;
@@ -110,16 +159,7 @@
   }
 
   ::selection {
-    background: var(--secondary);
-    color: var(--secondary-foreground);
-  }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
+    background: var(--primary);
+    color: var(--primary-foreground);
   }
 }

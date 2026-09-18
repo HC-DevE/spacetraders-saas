@@ -1,70 +1,95 @@
 <script setup lang="ts">
 import { RouterLink } from 'vue-router'
 
-import type { Ship } from '@/modules/fleet/schemas/ship.schema'
-import { formatDate, formatLabel } from '@/shared/utils/formatters'
 import { routeNames } from '@/app/router/route-names'
+import { formatDate, formatLabel } from '@/shared/utils/formatters'
 
-defineProps<{ nav: Ship['nav'] }>()
+import type { Ship } from '../../schemas/ship.schema'
+
+defineProps<{
+  nav: Ship['nav']
+}>()
 </script>
 
 <template>
-  <section class="min-w-0 rounded-xl border bg-card p-5 text-card-foreground shadow-sm">
-    <header class="flex flex-wrap items-center justify-between gap-3">
-      <h2 class="text-lg font-semibold">Navigation</h2>
+  <section class="min-w-0">
+    <header class="mb-3 flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h2 class="text-base font-semibold">Navigation</h2>
 
-      <p class="text-sm text-muted-foreground">
-        Flight mode:
-        <span class="font-medium capitalize text-foreground">
+        <p class="mt-1 text-sm text-muted-foreground">Latest position and recorded route.</p>
+      </div>
+
+      <p class="text-xs text-muted-foreground">
+        Flight mode
+        <span class="ml-2 font-mono text-foreground">
           {{ formatLabel(nav.flightMode) }}
         </span>
       </p>
     </header>
 
-    <dl class="mt-5 grid gap-4 sm:grid-cols-2">
-      <div class="min-w-0">
-        <dt class="text-sm text-muted-foreground">System</dt>
-        <dd class="mt-1 font-medium">
-          <RouterLink
-            :to="{ name: routeNames.systemDetail, params: { systemSymbol: nav.systemSymbol } }"
-            :aria-label="`Open system ${nav.systemSymbol}`"
-            class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    <div class="border border-border bg-card">
+      <dl class="grid gap-px bg-border sm:grid-cols-2">
+        <div class="min-w-0 bg-card p-4">
+          <dt class="text-xs text-muted-foreground">System</dt>
+
+          <dd class="mt-2 min-w-0">
+            <RouterLink
+              :to="{
+                name: routeNames.systemDetail,
+                params: {
+                  systemSymbol: nav.systemSymbol,
+                },
+              }"
+              :aria-label="`Open system ${nav.systemSymbol}`"
+              class="block truncate rounded-sm font-mono text-sm font-medium underline-offset-4 transition-colors hover:text-signal hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {{ nav.systemSymbol }}
+            </RouterLink>
+          </dd>
+        </div>
+
+        <div class="min-w-0 bg-card p-4">
+          <dt class="text-xs text-muted-foreground">Navigation waypoint</dt>
+
+          <dd class="mt-2 min-w-0">
+            <RouterLink
+              :to="{
+                name: routeNames.waypointDetail,
+                params: {
+                  systemSymbol: nav.systemSymbol,
+                  waypointSymbol: nav.waypointSymbol,
+                },
+              }"
+              :aria-label="`Open waypoint ${nav.waypointSymbol}`"
+              class="block truncate rounded-sm font-mono text-sm font-medium underline-offset-4 transition-colors hover:text-signal hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              {{ nav.waypointSymbol }}
+            </RouterLink>
+          </dd>
+        </div>
+      </dl>
+
+      <div class="border-t border-border">
+        <div class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <h3 class="text-sm font-medium">
+            {{ nav.status === 'IN_TRANSIT' ? 'Current journey' : 'Last recorded route' }}
+          </h3>
+
+          <span
+            v-if="nav.status === 'IN_TRANSIT'"
+            class="inline-flex items-center gap-2 text-xs text-signal"
           >
-            {{ nav.systemSymbol }}
-          </RouterLink>
-        </dd>
-      </div>
+            <span class="size-1.5 rounded-full bg-current" aria-hidden="true" />
+            In transit
+          </span>
+        </div>
 
-      <div class="min-w-0">
-        <dt class="text-sm text-muted-foreground">Navigation waypoint</dt>
-        <dd class="mt-1 font-medium">
-          <RouterLink
-            :to="{
-              name: routeNames.waypointDetail,
-              params: {
-                systemSymbol: nav.systemSymbol,
-                waypointSymbol: nav.waypointSymbol,
-              },
-            }"
-            :aria-label="`Open waypoint ${nav.waypointSymbol}`"
-            class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            {{ nav.waypointSymbol }}
-          </RouterLink>
-        </dd>
-      </div>
-    </dl>
+        <div class="grid gap-px border-t border-border bg-border md:grid-cols-2">
+          <!-- Origin -->
+          <div class="min-w-0 bg-card p-4">
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Origin</p>
 
-    <div class="mt-5 border-t pt-5">
-      <h3 class="font-semibold">
-        {{ nav.status === 'IN_TRANSIT' ? 'Current journey' : 'Last recorded route' }}
-      </h3>
-
-      <div class="mt-4 grid gap-4 md:grid-cols-2">
-        <div class="min-w-0 rounded-lg bg-muted p-4">
-          <p class="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Origin</p>
-
-          <p class="mt-2 font-semibold">
             <RouterLink
               :to="{
                 name: routeNames.waypointDetail,
@@ -74,36 +99,40 @@ defineProps<{ nav: Ship['nav'] }>()
                 },
               }"
               :aria-label="`Open origin waypoint ${nav.route.origin.symbol}`"
-              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              class="mt-3 block truncate rounded-sm font-mono text-sm font-medium underline-offset-4 transition-colors hover:text-signal hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {{ nav.route.origin.symbol }}
             </RouterLink>
-          </p>
 
-          <p class="mt-1 text-sm capitalize text-muted-foreground">
-            {{ formatLabel(nav.route.origin.type) }}
-            · {{ nav.route.origin.x }}, {{ nav.route.origin.y }}
-          </p>
+            <p class="mt-2 text-xs capitalize text-muted-foreground">
+              {{ formatLabel(nav.route.origin.type) }}
+              <span aria-hidden="true"> · </span>
+              <span class="font-mono">
+                {{ nav.route.origin.x }},
+                {{ nav.route.origin.y }}
+              </span>
+            </p>
 
-          <p class="mt-1 text-xs text-muted-foreground">
-            System
             <RouterLink
               :to="{
                 name: routeNames.systemDetail,
-                params: { systemSymbol: nav.route.origin.systemSymbol },
+                params: {
+                  systemSymbol: nav.route.origin.systemSymbol,
+                },
               }"
               :aria-label="`Open origin system ${nav.route.origin.systemSymbol}`"
-              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              class="mt-2 inline-block rounded-sm font-mono text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {{ nav.route.origin.systemSymbol }}
             </RouterLink>
-          </p>
-        </div>
+          </div>
 
-        <div class="min-w-0 rounded-lg bg-secondary p-4 text-secondary-foreground">
-          <p class="text-xs font-semibold uppercase tracking-wide">Destination</p>
+          <!-- Destination -->
+          <div class="min-w-0 bg-card p-4">
+            <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Destination
+            </p>
 
-          <p class="mt-2 font-semibold">
             <RouterLink
               :to="{
                 name: routeNames.waypointDetail,
@@ -113,58 +142,63 @@ defineProps<{ nav: Ship['nav'] }>()
                 },
               }"
               :aria-label="`Open destination waypoint ${nav.route.destination.symbol}`"
-              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              class="mt-3 block truncate rounded-sm font-mono text-sm font-medium text-signal underline-offset-4 transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {{ nav.route.destination.symbol }}
             </RouterLink>
-          </p>
 
-          <p class="mt-1 text-sm capitalize">
-            {{ formatLabel(nav.route.destination.type) }}
-            · {{ nav.route.destination.x }}, {{ nav.route.destination.y }}
-          </p>
+            <p class="mt-2 text-xs capitalize text-muted-foreground">
+              {{ formatLabel(nav.route.destination.type) }}
+              <span aria-hidden="true"> · </span>
+              <span class="font-mono">
+                {{ nav.route.destination.x }},
+                {{ nav.route.destination.y }}
+              </span>
+            </p>
 
-          <p class="mt-1 text-xs">
-            System
             <RouterLink
               :to="{
                 name: routeNames.systemDetail,
-                params: { systemSymbol: nav.route.destination.systemSymbol },
+                params: {
+                  systemSymbol: nav.route.destination.systemSymbol,
+                },
               }"
               :aria-label="`Open destination system ${nav.route.destination.systemSymbol}`"
-              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              class="mt-2 inline-block rounded-sm font-mono text-xs text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {{ nav.route.destination.systemSymbol }}
             </RouterLink>
-          </p>
+          </div>
         </div>
+
+        <dl class="grid gap-px border-t border-border bg-border sm:grid-cols-2">
+          <div class="bg-card px-4 py-3">
+            <dt class="text-xs text-muted-foreground">Departure</dt>
+
+            <dd class="mt-1">
+              <time :datetime="nav.route.departureTime" class="font-mono text-xs">
+                {{ formatDate(nav.route.departureTime) }}
+              </time>
+            </dd>
+          </div>
+
+          <div class="bg-card px-4 py-3">
+            <dt class="text-xs text-muted-foreground">
+              {{ nav.status === 'IN_TRANSIT' ? 'Expected arrival' : 'Recorded arrival' }}
+            </dt>
+
+            <dd class="mt-1">
+              <time :datetime="nav.route.arrival" class="font-mono text-xs">
+                {{ formatDate(nav.route.arrival) }}
+              </time>
+            </dd>
+          </div>
+        </dl>
       </div>
-
-      <dl class="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-        <div class="min-w-0">
-          <dt class="text-muted-foreground">Departure</dt>
-          <dd class="mt-1">
-            <time :datetime="nav.route.departureTime">
-              {{ formatDate(nav.route.departureTime) }}
-            </time>
-          </dd>
-        </div>
-
-        <div class="min-w-0">
-          <dt class="text-muted-foreground">
-            {{ nav.status === 'IN_TRANSIT' ? 'Expected arrival' : 'Recorded arrival' }}
-          </dt>
-          <dd class="mt-1">
-            <time :datetime="nav.route.arrival">
-              {{ formatDate(nav.route.arrival) }}
-            </time>
-          </dd>
-        </div>
-      </dl>
-
-      <p class="mt-4 text-xs text-muted-foreground">
-        Route information reflects the latest API response.
-      </p>
     </div>
+
+    <p class="mt-2 text-xs text-muted-foreground">
+      Route information reflects the latest API response.
+    </p>
   </section>
 </template>

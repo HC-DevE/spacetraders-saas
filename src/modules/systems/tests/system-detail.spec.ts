@@ -18,6 +18,8 @@ const systemEndpoint = 'https://api.spacetraders.io/v2/systems/:systemSymbol'
 
 const waypointsEndpoint = 'https://api.spacetraders.io/v2/systems/:systemSymbol/waypoints'
 
+const waypointRowsSelector = 'table[aria-label="Waypoints"] tbody tr'
+
 const server = setupServer()
 
 let waypoints = [createWaypoint('X1-TEST-A1'), createWaypoint('X1-TEST-A2', 'uncharted')]
@@ -34,7 +36,9 @@ let waypointRequests: Array<{
 let cleanup: (() => void) | undefined
 
 beforeAll(() => {
-  server.listen({ onUnhandledRequest: 'error' })
+  server.listen({
+    onUnhandledRequest: 'error',
+  })
 })
 
 beforeEach(() => {
@@ -60,7 +64,9 @@ beforeEach(() => {
       const url = new URL(request.url)
 
       const page = Number(url.searchParams.get('page'))
+
       const limit = Number(url.searchParams.get('limit'))
+
       const traits = url.searchParams.getAll('traits')
 
       waypointRequests.push({
@@ -108,11 +114,13 @@ afterAll(() => {
 
 async function mountSystemDetail(path = '/systems/X1-TEST') {
   const pinia = createPinia()
+
   const auth = useAuthStore(pinia)
 
   auth.setToken('systems-test-token')
 
   const queryClient = createQueryClient(auth)
+
   const router = createAppRouter(auth, createMemoryHistory())
 
   await router.push(path)
@@ -120,7 +128,16 @@ async function mountSystemDetail(path = '/systems/X1-TEST') {
 
   const wrapper = mount(App, {
     global: {
-      plugins: [pinia, [VueQueryPlugin, { queryClient }], router],
+      plugins: [
+        pinia,
+        [
+          VueQueryPlugin,
+          {
+            queryClient,
+          },
+        ],
+        router,
+      ],
     },
   })
 
@@ -144,6 +161,7 @@ describe('System details', () => {
 
     await vi.waitFor(() => {
       expect(wrapper.text()).toContain('X1-TEST-A1')
+
       expect(wrapper.text()).toContain('X1-TEST-A2')
     })
 
@@ -161,15 +179,16 @@ describe('System details', () => {
     expect(wrapper.get('h1').text()).toBe('Test System')
 
     expect(wrapper.text()).toContain('X1-TEST')
+
     expect(wrapper.text()).toContain('System overview')
+
     expect(wrapper.text()).toContain('Known waypoints')
 
     expect(wrapper.text()).toContain('Marketplace')
+
     expect(wrapper.text()).toContain('Uncharted')
 
-    const waypointCards = wrapper.findAll('section[aria-labelledby="waypoints-title"] article')
-
-    expect(waypointCards).toHaveLength(2)
+    expect(wrapper.findAll(waypointRowsSelector)).toHaveLength(2)
   })
 
   it('keeps the system visible when loading waypoints fails', async () => {
@@ -196,17 +215,24 @@ describe('System details', () => {
     })
 
     expect(wrapper.text()).toContain('Test System')
+
     expect(wrapper.text()).toContain('System overview')
+
     expect(wrapper.text()).toContain('X1')
+
     expect(wrapper.text()).toContain('Known waypoints')
   })
 
   it('paginates waypoints and resets to page one when the limit changes', async () => {
-    waypoints = Array.from({ length: 11 }, (_, index) =>
-      createWaypoint(
-        `X1-TEST-A${String(index + 1).padStart(2, '0')}`,
-        index === 1 ? 'uncharted' : 'marketplace',
-      ),
+    waypoints = Array.from(
+      {
+        length: 11,
+      },
+      (_, index) =>
+        createWaypoint(
+          `X1-TEST-A${String(index + 1).padStart(2, '0')}`,
+          index === 1 ? 'uncharted' : 'marketplace',
+        ),
     )
 
     const { wrapper, router } = await mountSystemDetail('/systems/X1-TEST?limit=10')
@@ -223,12 +249,12 @@ describe('System details', () => {
       expect(wrapper.text()).toContain('X1-TEST-A11')
     })
 
-    expect(wrapper.findAll('section[aria-labelledby="waypoints-title"] article')).toHaveLength(1)
+    expect(wrapper.findAll(waypointRowsSelector)).toHaveLength(1)
 
     await wrapper.get('#waypoints-limit').setValue('20')
 
     await vi.waitFor(() => {
-      expect(wrapper.findAll('section[aria-labelledby="waypoints-title"] article')).toHaveLength(11)
+      expect(wrapper.findAll(waypointRowsSelector)).toHaveLength(11)
     })
 
     expect(router.currentRoute.value.query.page).toBe('1')
@@ -283,8 +309,11 @@ describe('System details', () => {
   })
 
   it('resets waypoint pagination when the marketplace filter changes', async () => {
-    waypoints = Array.from({ length: 11 }, (_, index) =>
-      createWaypoint(`X1-TEST-A${String(index + 1).padStart(2, '0')}`),
+    waypoints = Array.from(
+      {
+        length: 11,
+      },
+      (_, index) => createWaypoint(`X1-TEST-A${String(index + 1).padStart(2, '0')}`),
     )
 
     const { wrapper, router } = await mountSystemDetail('/systems/X1-TEST?page=2&limit=10')
@@ -309,17 +338,17 @@ describe('System details', () => {
       expect(wrapper.text()).toContain('X1-TEST-A2')
     })
 
-    const waypointCards = wrapper.findAll('section[aria-labelledby="waypoints-title"] article')
+    const waypointRows = wrapper.findAll(waypointRowsSelector)
 
-    const unchartedCard = waypointCards.find((card) => card.text().includes('X1-TEST-A2'))
+    const unchartedRow = waypointRows.find((row) => row.text().includes('X1-TEST-A2'))
 
-    expect(unchartedCard).toBeDefined()
+    expect(unchartedRow).toBeDefined()
 
-    expect(unchartedCard?.text()).toContain('Uncharted')
+    expect(unchartedRow?.text()).toContain('Uncharted')
 
-    expect(unchartedCard?.text()).not.toContain('Marketplace')
+    expect(unchartedRow?.text()).not.toContain('Marketplace')
 
-    expect(unchartedCard?.text()).not.toContain('Trading Hub')
+    expect(unchartedRow?.text()).not.toContain('Trading Hub')
   })
 
   it('rejects an invalid waypoint response while keeping the system visible', async () => {
@@ -353,6 +382,7 @@ describe('System details', () => {
     })
 
     expect(wrapper.text()).toContain('Test System')
+
     expect(wrapper.text()).toContain('System overview')
 
     expect(wrapper.text()).not.toContain('No waypoints available')
@@ -439,7 +469,8 @@ describe('System details', () => {
 
     expect(wrapper.text()).not.toContain('System overview')
   })
-  it('opens the selected waypoint details', async () => {
+
+  it('opens the selected waypoint details from the waypoint title', async () => {
     server.use(
       http.get(
         'https://api.spacetraders.io/v2/systems/:systemSymbol/waypoints/:waypointSymbol',
@@ -453,10 +484,14 @@ describe('System details', () => {
     const { wrapper, router } = await mountSystemDetail()
 
     await vi.waitFor(() => {
-      expect(wrapper.find('button[aria-label="View waypoint X1-TEST-A1"]').exists()).toBe(true)
+      expect(wrapper.find('a[aria-label="View waypoint X1-TEST-A1"]').exists()).toBe(true)
     })
 
-    await wrapper.get('button[aria-label="View waypoint X1-TEST-A1"]').trigger('click')
+    const waypointLink = wrapper.get<HTMLAnchorElement>('a[aria-label="View waypoint X1-TEST-A1"]')
+
+    expect(waypointLink.attributes('href')).toBe('/systems/X1-TEST/waypoints/X1-TEST-A1')
+
+    await waypointLink.trigger('click')
 
     await vi.waitFor(() => {
       expect(router.currentRoute.value.name).toBe('waypoint-detail')

@@ -16,6 +16,7 @@ import {
   type WaypointsParams,
 } from '../schemas/waypoints.schema'
 import { routeNames } from '@/app/router/route-names.ts'
+import { formatLabel } from '@/shared/utils/formatters.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -113,11 +114,11 @@ async function changeMarketplace(enabled: boolean) {
 </script>
 
 <template>
-  <section class="min-w-0 space-y-6 wrap-anywhere">
+  <section class="min-w-0 space-y-8 wrap-anywhere">
     <RouterLink
       :to="{ name: routeNames.systems }"
       aria-label="Back to systems"
-      class="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline"
+      class="inline-flex items-center gap-2 rounded-sm text-sm text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span aria-hidden="true">←</span>
       Back to systems
@@ -142,37 +143,53 @@ async function changeMarketplace(enabled: boolean) {
     />
 
     <template v-else-if="system">
-      <header class="flex flex-wrap items-start justify-between gap-4">
+      <header class="flex flex-wrap items-start justify-between gap-5 border-b border-border pb-5">
         <div class="min-w-0">
-          <p class="text-sm font-medium text-muted-foreground">System details</p>
+          <p class="text-xs font-medium uppercase tracking-wide text-muted-foreground">System</p>
 
-          <h1 class="mt-1 text-2xl font-semibold tracking-tight">
+          <h1 class="mt-2 min-w-0 font-mono text-2xl font-semibold tracking-tight">
             {{ system.name || system.symbol }}
           </h1>
 
-          <p v-if="system.name" class="mt-1 text-sm text-muted-foreground">
+          <p v-if="system.name" class="mt-1 font-mono text-xs text-muted-foreground">
             {{ system.symbol }}
           </p>
+
+          <div class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+            <span class="capitalize text-orbit">
+              {{ formatLabel(system.type) }}
+            </span>
+
+            <span class="font-mono">
+              {{ system.sectorSymbol }}
+            </span>
+
+            <span class="font-mono tabular-nums">
+              {{ system.x }},
+              {{ system.y }}
+            </span>
+          </div>
         </div>
 
         <AppButton
           variant="outline"
+          class="h-8 px-3 text-xs"
           aria-label="Refresh system"
           :loading="isSystemFetching"
           :disabled="isSystemPaused"
           loading-label="Refreshing…"
           @click="refetchSystem()"
         >
-          Refresh system
+          Refresh
         </AppButton>
       </header>
 
       <div
         v-if="systemError"
         role="alert"
-        class="rounded-xl border border-warning/30 bg-warning-subtle p-4 text-warning"
+        class="border border-warning/30 bg-warning-subtle p-4 text-warning"
       >
-        <p class="font-semibold">Could not refresh system</p>
+        <p class="font-medium">Could not refresh system</p>
 
         <p class="mt-1 text-sm">
           {{ systemError.message }}
@@ -191,10 +208,10 @@ async function changeMarketplace(enabled: boolean) {
 
       <SystemOverview :system="system" />
 
-      <section aria-labelledby="waypoints-title" class="space-y-5">
+      <section aria-labelledby="waypoints-title" class="space-y-5 border-t border-border pt-8">
         <header class="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h2 id="waypoints-title" class="text-xl font-semibold tracking-tight">Waypoints</h2>
+            <h2 id="waypoints-title" class="text-lg font-semibold tracking-tight">Waypoints</h2>
 
             <p class="mt-1 text-sm text-muted-foreground">
               Explore known locations and installations in this system.
@@ -203,13 +220,14 @@ async function changeMarketplace(enabled: boolean) {
 
           <AppButton
             variant="outline"
+            class="h-8 px-3 text-xs"
             aria-label="Refresh waypoints"
             :loading="isWaypointsFetching"
             :disabled="isWaypointsPaused"
             loading-label="Refreshing…"
             @click="refetchWaypoints()"
           >
-            Refresh waypoints
+            Refresh
           </AppButton>
         </header>
 
@@ -228,9 +246,9 @@ async function changeMarketplace(enabled: boolean) {
           <div
             v-if="waypointsError"
             role="alert"
-            class="rounded-xl border border-warning/30 bg-warning-subtle p-4 text-warning"
+            class="border border-warning/30 bg-warning-subtle p-4 text-warning"
           >
-            <p class="font-semibold">Could not refresh waypoints</p>
+            <p class="font-medium">Could not refresh waypoints</p>
 
             <p class="mt-1 text-sm">
               {{ waypointsError.message }}
@@ -248,7 +266,9 @@ async function changeMarketplace(enabled: boolean) {
                 : `Loading page ${search.page}.`
             }}
 
-            Results from page {{ waypoints.meta.page }} are still displayed.
+            Results from page
+            {{ waypoints.meta.page }}
+            are still displayed.
           </p>
 
           <p v-else-if="isWaypointsPaused" role="status" class="text-sm text-muted-foreground">

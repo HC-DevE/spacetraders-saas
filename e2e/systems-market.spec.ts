@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+
 import { SPACE_TRADERS_DEFAULT_API_BASE_URL } from '../src/config/space-traders'
 
 const API_URL = SPACE_TRADERS_DEFAULT_API_BASE_URL
@@ -12,6 +13,7 @@ async function mockSystemsMarketApi(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
+
       body: JSON.stringify({
         data: {
           accountId: 'ACCOUNT-1',
@@ -29,6 +31,7 @@ async function mockSystemsMarketApi(page: Page) {
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
+
       body: JSON.stringify({
         data: [
           {
@@ -112,6 +115,7 @@ async function mockSystemsMarketApi(page: Page) {
             x: 12,
             y: -7,
             orbitals: [],
+
             faction: {
               symbol: 'COSMIC',
             },
@@ -130,6 +134,7 @@ async function mockSystemsMarketApi(page: Page) {
             ],
 
             modifiers: [],
+
             chart: {
               waypointSymbol: 'X1-TEST-A1',
               submittedBy: 'TEST',
@@ -162,6 +167,7 @@ async function mockSystemsMarketApi(page: Page) {
           x: 12,
           y: -7,
           orbitals: [],
+
           faction: {
             symbol: 'COSMIC',
           },
@@ -180,6 +186,7 @@ async function mockSystemsMarketApi(page: Page) {
           ],
 
           modifiers: [],
+
           chart: {
             waypointSymbol: 'X1-TEST-A1',
             submittedBy: 'TEST',
@@ -283,7 +290,11 @@ test('explores a system, opens a waypoint and consults its market', async ({ pag
     }),
   ).toBeVisible()
 
+  // Open the systems list from the main navigation.
   await page
+    .getByRole('navigation', {
+      name: 'Main navigation',
+    })
     .getByRole('link', {
       name: 'Systems',
       exact: true,
@@ -294,26 +305,59 @@ test('explores a system, opens a waypoint and consults its market', async ({ pag
 
   await expect(
     page.getByRole('heading', {
-      name: 'X1-TEST',
+      name: 'Systems',
       exact: true,
     }),
   ).toBeVisible()
 
-  await page
-    .getByRole('button', {
-      name: 'View system X1-TEST',
-      exact: true,
-    })
-    .click()
+  const systemsTable = page.getByRole('table', {
+    name: 'Systems',
+    exact: true,
+  })
+
+  await expect(systemsTable).toBeVisible()
+
+  await expect(systemsTable.locator('tbody tr')).toHaveCount(1)
+
+  const systemLink = page.getByRole('link', {
+    name: 'Open system X1-TEST',
+    exact: true,
+  })
+
+  await expect(systemLink).toBeVisible()
+
+  await systemLink.click()
 
   await expect(page).toHaveURL('/systems/X1-TEST')
 
+  // The detail page exposes the system overview
+  // and its waypoints independently of the displayed system title.
   await expect(
     page.getByRole('heading', {
-      name: 'X1-TEST',
+      name: 'System overview',
       exact: true,
     }),
   ).toBeVisible()
+
+  const waypointsTable = page.getByRole('table', {
+    name: 'Waypoints',
+    exact: true,
+  })
+
+  await expect(waypointsTable).toBeVisible()
+
+  await expect(waypointsTable.locator('tbody tr')).toHaveCount(1)
+
+  const waypointLink = page.getByRole('link', {
+    name: 'View waypoint X1-TEST-A1',
+    exact: true,
+  })
+
+  await expect(waypointLink).toBeVisible()
+
+  await waypointLink.click()
+
+  await expect(page).toHaveURL('/systems/X1-TEST/waypoints/X1-TEST-A1')
 
   await expect(
     page.getByRole('heading', {
@@ -322,14 +366,12 @@ test('explores a system, opens a waypoint and consults its market', async ({ pag
     }),
   ).toBeVisible()
 
-  await page
-    .getByRole('button', {
-      name: 'View waypoint X1-TEST-A1',
+  await expect(
+    page.getByRole('heading', {
+      name: 'Waypoint overview',
       exact: true,
-    })
-    .click()
-
-  await expect(page).toHaveURL('/systems/X1-TEST/waypoints/X1-TEST-A1')
+    }),
+  ).toBeVisible()
 
   const openMarketButton = page.getByRole('button', {
     name: 'Open waypoint market',
@@ -350,29 +392,69 @@ test('explores a system, opens a waypoint and consults its market', async ({ pag
   ).toBeVisible()
 
   await expect(
-    page.getByText('Iron', {
+    page.getByRole('heading', {
+      name: 'Market resources',
+      exact: true,
+    }),
+  ).toBeVisible()
+
+  // Structural resources remain distinct from detailed trade prices.
+  const exportsRegion = page.getByRole('region', {
+    name: 'Exports',
+    exact: true,
+  })
+
+  const importsRegion = page.getByRole('region', {
+    name: 'Imports',
+    exact: true,
+  })
+
+  const exchangeRegion = page.getByRole('region', {
+    name: 'Exchange',
+    exact: true,
+  })
+
+  await expect(
+    exportsRegion.getByText('Iron', {
       exact: true,
     }),
   ).toBeVisible()
 
   await expect(
-    page.getByText('Fuel', {
+    importsRegion.getByText('Fuel', {
       exact: true,
     }),
   ).toBeVisible()
 
   await expect(
-    page.getByText('Food', {
+    exchangeRegion.getByText('Food', {
       exact: true,
     }),
   ).toBeVisible()
+
+  const pricesTable = page.getByRole('table', {
+    name: 'Market trade prices',
+    exact: true,
+  })
+
+  await expect(pricesTable).toBeVisible()
+
+  await expect(pricesTable.locator('tbody tr')).toHaveCount(1)
+
+  const transactionsTable = page.getByRole('table', {
+    name: 'Market transactions',
+    exact: true,
+  })
+
+  await expect(transactionsTable).toBeVisible()
 
   await expect(
-    page.getByText('TEST-SHIP-1', {
+    transactionsTable.getByText('TEST-SHIP-1', {
       exact: true,
     }),
   ).toBeVisible()
 
+  // Navigate back through the same product hierarchy.
   await page
     .getByRole('link', {
       name: 'Back to waypoint',

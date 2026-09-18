@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute } from 'vue-router'
 
+import { routeNames } from '@/app/router/route-names'
 import { ApiError } from '@/shared/api/api-error'
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
@@ -10,7 +11,6 @@ import MarketGoodsTable from '../components/MarketGoodsTable.vue'
 import MarketResources from '../components/MarketResources.vue'
 import MarketTransactionsTable from '../components/MarketTransactionsTable.vue'
 import { useMarketQuery } from '../composables/use-market-query'
-import { routeNames } from '@/app/router/route-names.ts'
 
 const route = useRoute()
 
@@ -35,7 +35,7 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
 </script>
 
 <template>
-  <section class="min-w-0 space-y-8 wrap-anywhere">
+  <section class="min-w-0 space-y-6 wrap-anywhere">
     <RouterLink
       :to="{
         name: routeNames.waypointDetail,
@@ -45,7 +45,7 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
         },
       }"
       aria-label="Back to waypoint"
-      class="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline"
+      class="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <span aria-hidden="true"> ← </span>
 
@@ -71,19 +71,28 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
     />
 
     <template v-else-if="market">
-      <header class="flex flex-wrap items-start justify-between gap-4">
+      <header class="flex flex-wrap items-start justify-between gap-5 border-b border-border pb-5">
         <div class="min-w-0">
-          <p class="text-sm font-medium text-muted-foreground">Marketplace</p>
+          <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Marketplace
+          </p>
 
-          <h1 class="mt-1 text-2xl font-semibold tracking-tight">
+          <h1 class="mt-2 min-w-0 font-mono text-2xl font-semibold tracking-tight">
             {{ market.symbol }}
           </h1>
 
-          <p class="mt-1 text-sm text-muted-foreground">
+          <p class="mt-2 text-xs text-muted-foreground">
+            System
+
             <RouterLink
-              :to="{ name: routeNames.systemDetail, params: { systemSymbol } }"
+              :to="{
+                name: routeNames.systemDetail,
+                params: {
+                  systemSymbol,
+                },
+              }"
               :aria-label="`Open system ${systemSymbol}`"
-              class="rounded-sm underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              class="ml-1 rounded-sm font-mono text-foreground underline-offset-4 hover:text-signal hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
               {{ systemSymbol }}
             </RouterLink>
@@ -92,22 +101,23 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
 
         <AppButton
           variant="outline"
+          size="sm"
           aria-label="Refresh market"
           :loading="isFetching"
           :disabled="isPaused"
           loading-label="Refreshing…"
           @click="refetch()"
         >
-          Refresh market
+          Refresh
         </AppButton>
       </header>
 
       <div
         v-if="error"
         role="alert"
-        class="rounded-xl border border-warning/30 bg-warning-subtle p-4 text-warning"
+        class="border border-warning/30 bg-warning-subtle p-4 text-warning"
       >
-        <p class="font-semibold">Could not refresh market</p>
+        <p class="font-medium">Could not refresh market</p>
 
         <p class="mt-1 text-sm">
           {{ error.message }}
@@ -128,39 +138,43 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
 
       <MarketResources :market="market" />
 
-      <section aria-labelledby="market-prices-title" class="space-y-4">
+      <section aria-labelledby="market-prices-title" class="border-t border-border pt-6">
         <div>
-          <h2 id="market-prices-title" class="text-xl font-semibold tracking-tight">
-            Trade prices
-          </h2>
+          <h2 id="market-prices-title" class="text-base font-semibold">Trade prices</h2>
 
           <p class="mt-1 text-sm text-muted-foreground">
             Current prices, volume and supply when detailed market data is available.
           </p>
         </div>
 
-        <MarketGoodsTable v-if="market.tradeGoods?.length" :goods="market.tradeGoods" />
+        <div class="mt-4">
+          <MarketGoodsTable v-if="market.tradeGoods?.length" :goods="market.tradeGoods" />
 
-        <FeedbackState
-          v-else-if="market.tradeGoods"
-          kind="empty"
-          title="No priced goods reported"
-          description="Detailed market data is available, but no trade goods were returned."
-        />
+          <FeedbackState
+            v-else-if="market.tradeGoods"
+            kind="empty"
+            title="No priced goods reported"
+            description="Detailed market data is available, but no trade goods were returned."
+          />
 
-        <div v-else class="rounded-xl border bg-muted/40 p-5">
-          <p class="font-semibold">Detailed prices unavailable</p>
+          <div v-else class="border border-border bg-card p-5">
+            <div class="flex items-start gap-3">
+              <div>
+                <p class="font-medium text-foreground">Detailed prices unavailable</p>
 
-          <p class="mt-2 text-sm leading-6 text-muted-foreground">
-            SpaceTraders only exposes trade prices when one of your ships is present at this
-            marketplace.
-          </p>
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  SpaceTraders only exposes trade prices when one of your ships is present at this
+                  marketplace.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
-      <section aria-labelledby="market-transactions-title" class="space-y-4">
+      <section aria-labelledby="market-transactions-title" class="border-t border-border pt-6">
         <div>
-          <h2 id="market-transactions-title" class="text-xl font-semibold tracking-tight">
+          <h2 id="market-transactions-title" class="text-base font-semibold">
             Recent transactions
           </h2>
 
@@ -169,25 +183,31 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
           </p>
         </div>
 
-        <MarketTransactionsTable
-          v-if="market.transactions?.length"
-          :transactions="market.transactions"
-        />
+        <div class="mt-4">
+          <MarketTransactionsTable
+            v-if="market.transactions?.length"
+            :transactions="market.transactions"
+          />
 
-        <FeedbackState
-          v-else-if="market.transactions"
-          kind="empty"
-          title="No recent transactions"
-          description="Transaction data is available, but no recent transactions were returned."
-        />
+          <FeedbackState
+            v-else-if="market.transactions"
+            kind="empty"
+            title="No recent transactions"
+            description="Transaction data is available, but no recent transactions were returned."
+          />
 
-        <div v-else class="rounded-xl border bg-muted/40 p-5">
-          <p class="font-semibold">Transaction history unavailable</p>
+          <div v-else class="border border-border bg-card p-5">
+            <div class="flex items-start gap-3">
+              <div>
+                <p class="font-medium text-foreground">Transaction history unavailable</p>
 
-          <p class="mt-2 text-sm leading-6 text-muted-foreground">
-            Recent transactions become available when one of your ships is present at this
-            marketplace.
-          </p>
+                <p class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+                  Recent transactions become available when one of your ships is present at this
+                  marketplace.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
     </template>
