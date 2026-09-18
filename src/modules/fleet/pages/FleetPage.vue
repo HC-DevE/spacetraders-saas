@@ -5,7 +5,10 @@ import { useRoute, useRouter } from 'vue-router'
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
 import { Label } from '@/shared/components/ui/label'
+import ViewModeToggle from '@/shared/components/view-mode/ViewModeToggle.vue'
+import { parseViewMode, type ViewMode, viewModes } from '@/shared/components/view-mode/view-mode'
 
+import ShipCard from '../components/ShipCard.vue'
 import ShipTable from '../components/ShipTable.vue'
 import { useShipsQuery } from '../composables/use-ships-query'
 import {
@@ -19,6 +22,8 @@ const route = useRoute()
 const router = useRouter()
 
 const params = computed(() => shipsSearchSchema.parse(route.query))
+
+const viewMode = computed(() => parseViewMode(route.query.view))
 
 const {
   data: ships,
@@ -85,6 +90,22 @@ async function changeLimit(event: Event) {
 
   await replacePagination(parsed.data)
 }
+
+async function changeViewMode(nextViewMode: ViewMode) {
+  const query = {
+    ...route.query,
+  }
+
+  if (nextViewMode === viewModes.table) {
+    delete query.view
+  } else {
+    query.view = nextViewMode
+  }
+
+  await router.replace({
+    query,
+  })
+}
 </script>
 
 <template>
@@ -122,20 +143,24 @@ async function changeLimit(event: Event) {
         </template>
       </p>
 
-      <div class="flex items-center gap-3">
-        <Label for="ships-limit" class="text-xs text-muted-foreground"> Per page </Label>
+      <div class="flex flex-wrap items-center gap-4">
+        <ViewModeToggle :model-value="viewMode" @update:model-value="changeViewMode" />
 
-        <select
-          id="ships-limit"
-          :value="params.limit"
-          :disabled="isFetching"
-          class="h-8 border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          @change="changeLimit"
-        >
-          <option v-for="size in shipsPageSizes" :key="size" :value="size">
-            {{ size }}
-          </option>
-        </select>
+        <div class="flex items-center gap-3">
+          <Label for="ships-limit" class="text-xs text-muted-foreground"> Per page </Label>
+
+          <select
+            id="ships-limit"
+            :value="params.limit"
+            :disabled="isFetching"
+            class="h-8 border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            @change="changeLimit"
+          >
+            <option v-for="size in shipsPageSizes" :key="size" :value="size">
+              {{ size }}
+            </option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -185,12 +210,28 @@ async function changeLimit(event: Event) {
         Updating your ships…
       </p>
 
-      <ShipTable
-        v-if="ships.data.length"
-        :ships="ships.data"
-        :is-fetching="isFetching"
-        :is-placeholder-data="isPlaceholderData"
-      />
+      <template v-if="ships.data.length">
+        <ShipTable
+          v-if="viewMode === viewModes.table"
+          :ships="ships.data"
+          :is-fetching="isFetching"
+          :is-placeholder-data="isPlaceholderData"
+        />
+
+        <ul
+          v-else
+          aria-label="Fleet cards"
+          :aria-busy="isFetching ? 'true' : undefined"
+          class="grid gap-4 lg:grid-cols-2"
+          :class="{
+            'opacity-60': isPlaceholderData,
+          }"
+        >
+          <li v-for="ship in ships.data" :key="ship.symbol" class="min-w-0">
+            <ShipCard :ship="ship" class="h-full" />
+          </li>
+        </ul>
+      </template>
 
       <FeedbackState
         v-else

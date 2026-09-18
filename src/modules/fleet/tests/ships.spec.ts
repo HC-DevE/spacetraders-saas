@@ -17,6 +17,8 @@ const endpoint = 'https://api.spacetraders.io/v2/my/ships'
 
 const fleetRowsSelector = 'table[aria-label="Fleet"] tbody tr'
 
+const fleetCardsSelector = 'ul[aria-label="Fleet cards"] > li'
+
 const server = setupServer()
 
 let requests: Array<{
@@ -162,6 +164,156 @@ describe('Fleet page', () => {
     )
   })
 
+  it('renders the cards view from the URL', async () => {
+    const { wrapper } = await mountFleet('/fleet?view=cards')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(fleetCardsSelector)).toHaveLength(2)
+    })
+
+    expect(wrapper.find('table[aria-label="Fleet"]').exists()).toBe(false)
+
+    expect(wrapper.get('button[aria-label="Show cards view"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
+
+    expect(wrapper.get('button[aria-label="Show table view"]').attributes('aria-pressed')).toBe(
+      'false',
+    )
+
+    expect(wrapper.find('a[aria-label="Open ship TEST-1"]').exists()).toBe(true)
+
+    expect(wrapper.find('a[aria-label="Open ship TEST-2"]').exists()).toBe(true)
+
+    expect(wrapper.get('a[aria-label="Open system X1-MQ65"]').attributes('href')).toBe(
+      '/systems/X1-MQ65',
+    )
+
+    expect(wrapper.get('a[aria-label="Open waypoint X1-MQ65-A1"]').attributes('href')).toBe(
+      '/systems/X1-MQ65/waypoints/X1-MQ65-A1',
+    )
+
+    expect(wrapper.text()).toContain('No fuel capacity')
+
+    expect(wrapper.text()).toContain('No cargo capacity')
+  })
+
+  it('switches view mode without refetching ships and preserves pagination', async () => {
+    const { wrapper, router } = await mountFleet('/fleet?page=1&limit=10')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(fleetRowsSelector)).toHaveLength(2)
+    })
+
+    expect(requests).toHaveLength(1)
+
+    await wrapper.get('button[aria-label="Show cards view"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(router.currentRoute.value.query.view).toBe('cards')
+
+      expect(wrapper.findAll(fleetCardsSelector)).toHaveLength(2)
+    })
+
+    expect(router.currentRoute.value.query.page).toBe('1')
+
+    expect(router.currentRoute.value.query.limit).toBe('10')
+
+    expect(wrapper.find('table[aria-label="Fleet"]').exists()).toBe(false)
+
+    expect(requests).toHaveLength(1)
+
+    await wrapper.get('button[aria-label="Show table view"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(router.currentRoute.value.query.view).toBeUndefined()
+
+      expect(wrapper.findAll(fleetRowsSelector)).toHaveLength(2)
+    })
+
+    expect(router.currentRoute.value.query.page).toBe('1')
+
+    expect(router.currentRoute.value.query.limit).toBe('10')
+
+    expect(wrapper.find('ul[aria-label="Fleet cards"]').exists()).toBe(false)
+
+    expect(requests).toHaveLength(1)
+  })
+
+  it('falls back to the table view for an invalid view parameter', async () => {
+    const { wrapper } = await mountFleet('/fleet?view=invalid')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(fleetRowsSelector)).toHaveLength(2)
+    })
+
+    expect(wrapper.find('ul[aria-label="Fleet cards"]').exists()).toBe(false)
+
+    expect(wrapper.get('button[aria-label="Show table view"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
+
+    expect(wrapper.get('button[aria-label="Show cards view"]').attributes('aria-pressed')).toBe(
+      'false',
+    )
+  })
+
+  it('shows the destination and expected arrival in cards view while a ship is in transit', async () => {
+    const transitShip = createShip('TEST-TRANSIT')
+
+    transitShip.nav.status = 'IN_TRANSIT'
+
+    transitShip.nav.route.destination = {
+      symbol: 'X1-MQ65-B2',
+      type: 'MOON',
+      systemSymbol: 'X1-MQ65',
+      x: 15,
+      y: -8,
+    }
+
+    transitShip.nav.route.arrival = '2026-09-14T10:26:06.000Z'
+
+    server.use(
+      http.get(endpoint, ({ request }) => {
+        const url = new URL(request.url)
+
+        const page = Number(url.searchParams.get('page'))
+
+        const limit = Number(url.searchParams.get('limit'))
+
+        return HttpResponse.json({
+          data: [transitShip],
+
+          meta: {
+            page,
+            limit,
+            total: 1,
+          },
+        })
+      }),
+    )
+
+    const { wrapper } = await mountFleet('/fleet?view=cards')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(fleetCardsSelector)).toHaveLength(1)
+    })
+
+    expect(wrapper.text()).toContain('Destination')
+
+    expect(wrapper.text()).toContain('Expected arrival')
+
+    expect(wrapper.get('a[aria-label="Open system X1-MQ65"]').attributes('href')).toBe(
+      '/systems/X1-MQ65',
+    )
+
+    expect(wrapper.get('a[aria-label="Open waypoint X1-MQ65-B2"]').attributes('href')).toBe(
+      '/systems/X1-MQ65/waypoints/X1-MQ65-B2',
+    )
+
+    expect(wrapper.get('time').attributes('datetime')).toBe('2026-09-14T10:26:06.000Z')
+  })
+
   it('opens the selected ship details from the ship title', async () => {
     let requestedSymbol: string | undefined
 
@@ -278,6 +430,8 @@ describe('Fleet page', () => {
     })
 
     expect(wrapper.findAll(fleetRowsSelector)).toHaveLength(0)
+
+    expect(wrapper.find('ul[aria-label="Fleet cards"]').exists()).toBe(false)
 
     expect(wrapper.find('nav[aria-label="Fleet pagination"]').exists()).toBe(false)
   })
