@@ -164,41 +164,7 @@ describe('Fleet page', () => {
     )
   })
 
-  it('renders the cards view from the URL', async () => {
-    const { wrapper } = await mountFleet('/fleet?view=cards')
-
-    await vi.waitFor(() => {
-      expect(wrapper.findAll(fleetCardsSelector)).toHaveLength(2)
-    })
-
-    expect(wrapper.find('table[aria-label="Fleet"]').exists()).toBe(false)
-
-    expect(wrapper.get('button[aria-label="Show cards view"]').attributes('aria-pressed')).toBe(
-      'true',
-    )
-
-    expect(wrapper.get('button[aria-label="Show table view"]').attributes('aria-pressed')).toBe(
-      'false',
-    )
-
-    expect(wrapper.find('a[aria-label="Open ship TEST-1"]').exists()).toBe(true)
-
-    expect(wrapper.find('a[aria-label="Open ship TEST-2"]').exists()).toBe(true)
-
-    expect(wrapper.get('a[aria-label="Open system X1-MQ65"]').attributes('href')).toBe(
-      '/systems/X1-MQ65',
-    )
-
-    expect(wrapper.get('a[aria-label="Open waypoint X1-MQ65-A1"]').attributes('href')).toBe(
-      '/systems/X1-MQ65/waypoints/X1-MQ65-A1',
-    )
-
-    expect(wrapper.text()).toContain('No fuel capacity')
-
-    expect(wrapper.text()).toContain('No cargo capacity')
-  })
-
-  it('switches view mode without refetching ships and preserves pagination', async () => {
+  it('switches view mode locally without refetching ships or changing navigation state', async () => {
     const { wrapper, router } = await mountFleet('/fleet?page=1&limit=10')
 
     await vi.waitFor(() => {
@@ -207,41 +173,38 @@ describe('Fleet page', () => {
 
     expect(requests).toHaveLength(1)
 
+    expect(wrapper.get('button[aria-label="Show table view"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
+
+    expect(wrapper.get('button[aria-label="Show cards view"]').attributes('aria-pressed')).toBe(
+      'false',
+    )
+
     await wrapper.get('button[aria-label="Show cards view"]').trigger('click')
 
     await vi.waitFor(() => {
-      expect(router.currentRoute.value.query.view).toBe('cards')
-
       expect(wrapper.findAll(fleetCardsSelector)).toHaveLength(2)
     })
 
-    expect(router.currentRoute.value.query.page).toBe('1')
+    expect(wrapper.get('button[aria-label="Show table view"]').attributes('aria-pressed')).toBe(
+      'false',
+    )
 
-    expect(router.currentRoute.value.query.limit).toBe('10')
+    expect(wrapper.get('button[aria-label="Show cards view"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
 
     expect(wrapper.find('table[aria-label="Fleet"]').exists()).toBe(false)
+
+    expect(router.currentRoute.value.query).toEqual({
+      page: '1',
+      limit: '10',
+    })
 
     expect(requests).toHaveLength(1)
 
     await wrapper.get('button[aria-label="Show table view"]').trigger('click')
-
-    await vi.waitFor(() => {
-      expect(router.currentRoute.value.query.view).toBeUndefined()
-
-      expect(wrapper.findAll(fleetRowsSelector)).toHaveLength(2)
-    })
-
-    expect(router.currentRoute.value.query.page).toBe('1')
-
-    expect(router.currentRoute.value.query.limit).toBe('10')
-
-    expect(wrapper.find('ul[aria-label="Fleet cards"]').exists()).toBe(false)
-
-    expect(requests).toHaveLength(1)
-  })
-
-  it('falls back to the table view for an invalid view parameter', async () => {
-    const { wrapper } = await mountFleet('/fleet?view=invalid')
 
     await vi.waitFor(() => {
       expect(wrapper.findAll(fleetRowsSelector)).toHaveLength(2)
@@ -253,9 +216,65 @@ describe('Fleet page', () => {
       'true',
     )
 
+    expect(router.currentRoute.value.query).toEqual({
+      page: '1',
+      limit: '10',
+    })
+
+    expect(requests).toHaveLength(1)
+  })
+
+  it('keeps cards view active while changing pages', async () => {
+    const { wrapper, router } = await mountFleet('/fleet?page=1&limit=1')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(fleetRowsSelector)).toHaveLength(1)
+    })
+
+    await wrapper.get('button[aria-label="Show cards view"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(fleetCardsSelector)).toHaveLength(1)
+    })
+
+    expect(wrapper.text()).toContain('TEST-1')
+
+    await wrapper.get('button[aria-label="Next ships page"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(router.currentRoute.value.query.page).toBe('2')
+
+      expect(wrapper.text()).toContain('TEST-2')
+    })
+
+    expect(wrapper.findAll(fleetCardsSelector)).toHaveLength(1)
+
+    expect(wrapper.find('table[aria-label="Fleet"]').exists()).toBe(false)
+
     expect(wrapper.get('button[aria-label="Show cards view"]').attributes('aria-pressed')).toBe(
-      'false',
+      'true',
     )
+
+    expect(router.currentRoute.value.query).toEqual({
+      page: '2',
+      limit: '1',
+    })
+
+    expect(
+      requests.map(({ page, limit }) => ({
+        page,
+        limit,
+      })),
+    ).toEqual([
+      {
+        page: 1,
+        limit: 1,
+      },
+      {
+        page: 2,
+        limit: 1,
+      },
+    ])
   })
 
   it('shows the destination and expected arrival in cards view while a ship is in transit', async () => {
@@ -277,23 +296,27 @@ describe('Fleet page', () => {
       http.get(endpoint, ({ request }) => {
         const url = new URL(request.url)
 
-        const page = Number(url.searchParams.get('page'))
-
-        const limit = Number(url.searchParams.get('limit'))
-
         return HttpResponse.json({
           data: [transitShip],
 
           meta: {
-            page,
-            limit,
+            page: Number(url.searchParams.get('page')),
+
+            limit: Number(url.searchParams.get('limit')),
+
             total: 1,
           },
         })
       }),
     )
 
-    const { wrapper } = await mountFleet('/fleet?view=cards')
+    const { wrapper } = await mountFleet()
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(fleetRowsSelector)).toHaveLength(1)
+    })
+
+    await wrapper.get('button[aria-label="Show cards view"]').trigger('click')
 
     await vi.waitFor(() => {
       expect(wrapper.findAll(fleetCardsSelector)).toHaveLength(1)

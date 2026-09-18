@@ -17,6 +17,8 @@ const endpoint = 'https://api.spacetraders.io/v2/systems'
 
 const systemsRowsSelector = 'table[aria-label="Systems"] tbody tr'
 
+const systemsCardsSelector = 'ul[aria-label="System cards"] > li'
+
 const server = setupServer()
 
 let systems = Array.from(
@@ -175,6 +177,137 @@ describe('Systems page', () => {
     expect(systemsLink.attributes('aria-current')).toBe('page')
   })
 
+  it('switches view mode locally without refetching systems or changing navigation state', async () => {
+    const { wrapper, router } = await mountSystems('/systems?page=1&limit=10')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
+    })
+
+    expect(requests).toHaveLength(1)
+
+    expect(wrapper.get('button[aria-label="Show table view"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
+
+    await wrapper.get('button[aria-label="Show cards view"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(systemsCardsSelector)).toHaveLength(10)
+    })
+
+    expect(wrapper.find('table[aria-label="Systems"]').exists()).toBe(false)
+
+    expect(wrapper.get('button[aria-label="Show cards view"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
+
+    expect(router.currentRoute.value.query).toEqual({
+      page: '1',
+      limit: '10',
+    })
+
+    expect(requests).toHaveLength(1)
+
+    await wrapper.get('button[aria-label="Show table view"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
+    })
+
+    expect(wrapper.find('ul[aria-label="System cards"]').exists()).toBe(false)
+
+    expect(wrapper.get('button[aria-label="Show table view"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
+
+    expect(router.currentRoute.value.query).toEqual({
+      page: '1',
+      limit: '10',
+    })
+
+    expect(requests).toHaveLength(1)
+  })
+
+  it('provides an exploration summary in cards view', async () => {
+    const { wrapper } = await mountSystems()
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
+    })
+
+    await wrapper.get('button[aria-label="Show cards view"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(systemsCardsSelector)).toHaveLength(10)
+    })
+
+    expect(wrapper.text()).toContain('Known waypoints')
+
+    expect(wrapper.text()).toMatch(/planet/i)
+
+    expect(wrapper.text()).toMatch(/moon/i)
+
+    expect(wrapper.text()).toMatch(/jump gate/i)
+
+    expect(wrapper.text()).toContain('Explore system')
+
+    expect(wrapper.get('a[aria-label="Open system X1-TEST-01"]').attributes('href')).toBe(
+      '/systems/X1-TEST-01',
+    )
+  })
+
+  it('keeps cards view active while changing pages', async () => {
+    const { wrapper, router } = await mountSystems('/systems?page=1&limit=10')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(10)
+    })
+
+    await wrapper.get('button[aria-label="Show cards view"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(wrapper.findAll(systemsCardsSelector)).toHaveLength(10)
+    })
+
+    await wrapper.get('button[aria-label="Next systems page"]').trigger('click')
+
+    await vi.waitFor(() => {
+      expect(router.currentRoute.value.query.page).toBe('2')
+
+      expect(wrapper.text()).toContain('X1-TEST-11')
+    })
+
+    expect(wrapper.findAll(systemsCardsSelector)).toHaveLength(1)
+
+    expect(wrapper.find('table[aria-label="Systems"]').exists()).toBe(false)
+
+    expect(wrapper.get('button[aria-label="Show cards view"]').attributes('aria-pressed')).toBe(
+      'true',
+    )
+
+    expect(router.currentRoute.value.query).toEqual({
+      page: '2',
+      limit: '10',
+    })
+
+    expect(
+      requests.map(({ page, limit }) => ({
+        page,
+        limit,
+      })),
+    ).toEqual([
+      {
+        page: 1,
+        limit: 10,
+      },
+      {
+        page: 2,
+        limit: 10,
+      },
+    ])
+  })
+
   it('loads the next page and resets the page when the limit changes', async () => {
     const { wrapper, router } = await mountSystems('/systems?limit=10')
 
@@ -247,6 +380,8 @@ describe('Systems page', () => {
     })
 
     expect(wrapper.findAll(systemsRowsSelector)).toHaveLength(0)
+
+    expect(wrapper.find('ul[aria-label="System cards"]').exists()).toBe(false)
 
     expect(wrapper.find('nav[aria-label="Systems pagination"]').exists()).toBe(false)
   })
