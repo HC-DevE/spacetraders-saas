@@ -19,7 +19,7 @@ function getAriaCurrent(item: (typeof mainNavigation)[number]): 'page' | 'locati
 </script>
 
 <template>
-  <nav aria-label="Main navigation" class="mx-auto flex max-w-6xl gap-2 px-4 pb-3 sm:px-6">
+  <nav aria-label="Main navigation" class="mx-auto flex max-w-6xl gap-2 px-4 py-3 sm:px-6">
     <RouterLink
       v-for="item in mainNavigation"
       :key="item.section"
