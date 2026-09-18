@@ -1,219 +1,327 @@
 # Systems and waypoints
 
-Le module `systems` permet d’explorer les systèmes connus, d’ouvrir un système, de parcourir ses waypoints et de consulter le détail d’un waypoint.
+## Objectif
 
-Les marchés ne sont pas implémentés dans ce module : un waypoint avec le trait `MARKETPLACE` expose seulement une navigation vers le module `markets`.
+Le module `systems` permet d’explorer les systèmes connus, leurs waypoints et les relations entre ces différentes ressources.
 
-## Périmètre
-
-### Liste des systèmes
-
-La page `/systems` affiche :
-
-- le nom et le symbole du système ;
-- son type et son secteur ;
-- sa constellation lorsqu’elle est fournie ;
-- ses coordonnées ;
-- le nombre de waypoints connus ;
-- les factions présentes ;
-- un bouton permettant d’ouvrir le détail du système.
-
-La liste dispose d’une pagination serveur et d’une actualisation manuelle.
-
-### Détail d’un système
-
-La page `/systems/:systemSymbol` charge séparément :
-
-- le système demandé ;
-- la liste paginée de ses waypoints.
-
-Cette séparation est volontaire : un échec de la liste des waypoints ne masque pas les informations du système déjà chargées.
-
-La liste des waypoints affiche notamment :
-
-- le symbole et le type ;
-- les coordonnées ;
-- le nombre d’orbitals ;
-- la faction lorsqu’elle est fournie ;
-- les traits retournés par l’API ;
-- l’état de construction ;
-- un bouton vers le détail du waypoint.
-
-Un filtre simple « Marketplace only » est proposé. Il représente un besoin fonctionnel de l’interface et est traduit vers le trait API `MARKETPLACE` dans la couche de données.
-
-### Détail d’un waypoint
-
-La page `/systems/:systemSymbol/waypoints/:waypointSymbol` présente :
-
-| Section   | Informations                                                                               |
-| --------- | ------------------------------------------------------------------------------------------ |
-| Overview  | Type, système, coordonnées, faction, construction, marché, parent orbit, orbitals et chart |
-| Traits    | Nom et description des traits retournés                                                    |
-| Modifiers | Modificateurs lorsqu’ils sont fournis                                                      |
-| Orbitals  | Liens vers les waypoints orbitaux                                                          |
-| Chart     | Informations de chart lorsqu’elles sont disponibles                                        |
-
-Les liens de relation exploitent les routes existantes : système parent, parent orbit et orbitals.
-
-Un bouton `Open market` est affiché uniquement lorsque le trait `MARKETPLACE` est connu.
-
-## Waypoints non cartographiés
-
-Un waypoint avec le trait `UNCHARTED` peut masquer ses véritables traits.
-
-Dans ce cas, l’absence de `MARKETPLACE` ne permet pas de conclure qu’aucun marché n’existe. L’interface affiche donc :
+Il couvre trois niveaux principaux :
 
 ```text
-Marketplace
-Unknown
+Systems list
+→ liste paginée des systèmes connus
+
+System detail
+→ informations d’un système + liste de ses waypoints
+
+Waypoint detail
+→ informations détaillées d’un waypoint
 ```
 
-et n’invente pas de trait absent de la réponse.
+Le marché d’un waypoint n’est pas rendu directement dans ce module.
 
-Pour un waypoint cartographié sans trait `MARKETPLACE`, l’interface affiche `No marketplace trait`.
-
-Cette logique est centralisée dans `utils/waypoint-status.ts` plutôt que dupliquée dans les composants.
-
-## Responsabilités des fichiers
-
-| Fichier ou dossier                   | Responsabilité                                                   |
-| ------------------------------------ | ---------------------------------------------------------------- |
-| `api/systems.api.ts`                 | Liste et détail des systèmes, validation des réponses            |
-| `api/waypoints.api.ts`               | Liste et détail des waypoints, validation des réponses           |
-| `schemas/system.schema.ts`           | Contrat d’un système                                             |
-| `schemas/systems.schema.ts`          | Pagination et réponse de liste des systèmes                      |
-| `schemas/waypoint.schema.ts`         | Contrat complet d’un waypoint                                    |
-| `schemas/waypoints.schema.ts`        | Pagination, filtre Marketplace et réponse de liste des waypoints |
-| `composables/system.keys.ts`         | Clés TanStack Query des systèmes                                 |
-| `composables/waypoint.keys.ts`       | Clés TanStack Query des waypoints                                |
-| `composables/use-systems-query.ts`   | Query paginée des systèmes                                       |
-| `composables/use-system-query.ts`    | Query d’un système                                               |
-| `composables/use-waypoints-query.ts` | Query paginée des waypoints                                      |
-| `composables/use-waypoint-query.ts`  | Query d’un waypoint                                              |
-| `pages/SystemsPage.vue`              | Composition et états de la liste des systèmes                    |
-| `pages/SystemDetailPage.vue`         | Composition du système et de ses waypoints                       |
-| `pages/WaypointDetailPage.vue`       | Composition et états du détail waypoint                          |
-| `components/SystemCard.vue`          | Résumé d’un système                                              |
-| `components/SystemOverview.vue`      | Informations du système                                          |
-| `components/WaypointList.vue`        | Liste, pagination et filtre Marketplace                          |
-| `components/WaypointOverview.vue`    | Présentation du détail waypoint et liens associés                |
-| `utils/waypoint-status.ts`           | Règles pures liées aux traits et au statut Marketplace           |
-| `shared/utils/formatters.ts`         | Formatage générique des libellés et dates                        |
-| `tests/`                             | Tests d’intégration, fixtures et logique pure                    |
-
-Les composants reçoivent directement les types déduits des schémas Zod. Aucun modèle de présentation intermédiaire n’est créé uniquement pour faciliter le rendu.
-
-## Appels réseau
+Lorsqu’un waypoint possède réellement le trait :
 
 ```text
-GET /systems?page={page}&limit={limit}
-GET /systems/{systemSymbol}
-GET /systems/{systemSymbol}/waypoints?page={page}&limit={limit}
-GET /systems/{systemSymbol}/waypoints?page={page}&limit={limit}&traits=MARKETPLACE
-GET /systems/{systemSymbol}/waypoints/{waypointSymbol}
+MARKETPLACE
 ```
 
-Le token est passé explicitement aux fonctions API.
+il expose une navigation vers le module `markets`.
 
-Après validation Zod :
+---
 
-- la page et la limite retournées doivent correspondre à la demande ;
-- un système de détail doit correspondre au symbole demandé ;
-- tous les waypoints d’une liste doivent appartenir au système demandé ;
-- un waypoint de détail doit correspondre au système et au symbole demandés.
+# Périmètre
 
-Une incohérence produit une erreur `invalid-response` et aucune valeur n’est inventée.
+## Liste des systèmes
 
-## Pagination et filtre Marketplace
-
-### Systems
+La page :
 
 ```text
-/systems?page=2&limit=20
+/systems
 ```
 
-- Page par défaut : `1`.
-- Taille par défaut : `10`.
-- Tailles proposées : `10` et `20`.
-- Les paramètres invalides utilisent les valeurs par défaut.
-- Changer la taille ramène à la première page.
+présente les systèmes connus dans une table structurée.
 
-### Waypoints
-
-```text
-/systems/X1-TEST?page=2&limit=10&marketplace=true
-```
-
-La route frontend conserve un filtre simple `marketplace=true`.
-
-La couche API le traduit en :
-
-```text
-traits=MARKETPLACE
-```
-
-Ce choix évite d’exposer dans l’interface tous les filtres techniques possibles de SpaceTraders alors qu’ils ne répondent pas à un besoin produit actuel.
-
-Changer la taille de page ou le filtre Marketplace ramène à la première page.
-
-Lors d’un changement de page compatible, TanStack Query peut conserver temporairement les résultats précédents. Ils ne sont pas réutilisés si la taille de page ou le filtre Marketplace change.
-
-### Pourquoi le filtrage reste volontairement limité
-
-L’API SpaceTraders permet d’aller plus loin que le filtre actuellement exposé dans l’interface. La liste des waypoints peut notamment être filtrée par type et par plusieurs traits.
-
-Une version plus complète pourrait donc permettre des recherches du type :
-
-```text
-type=PLANET
-traits=MARKETPLACE
-traits=SHIPYARD
-```
-
-Ce support n’a pas été oublié : il a été volontairement écarté de cette version.
-
-Une première réflexion autour d’un système de filtres plus générique faisait apparaître plusieurs responsabilités supplémentaires :
-
-- définir un modèle de filtres propre à l’application ;
-- choisir un contrat d’URL frontend indépendant de celui de SpaceTraders ;
-- convertir les valeurs lisibles de l’URL vers les enums API ;
-- supporter plusieurs traits simultanément ;
-- normaliser leur ordre pour conserver des query keys stables ;
-- remettre correctement la pagination à zéro lorsqu’un filtre change ;
-- décider quelles données peuvent rester en placeholder pendant un changement de filtre ;
-- concevoir une interface capable d’exposer un grand nombre de traits sans surcharger l’écran.
-
-Implémenter seulement une partie de cette logique aurait créé davantage de couplage et de cas particuliers que de valeur fonctionnelle.
-
-Le choix retenu est donc de conserver un besoin utilisateur concret :
-
-```text
-Marketplace only
-```
-
-qui est traduit dans la couche API vers :
-
-```text
-traits=MARKETPLACE
-```
-
-Ce filtre sert directement le parcours principal de l’application :
+Chaque ligne expose notamment :
 
 ```text
 System
-→ Waypoint avec Marketplace
-→ Market
+Type
+Sector
+Coordinates
+Waypoints
+Factions
 ```
 
-Il permet également de conserver une séparation claire entre le contrat de navigation frontend et le contrat HTTP.
+L’utilisateur peut :
 
-Si les filtres devaient évoluer, l’approche privilégiée serait d’introduire un modèle de filtres applicatif explicite, puis un adaptateur chargé de produire les query params SpaceTraders. L’URL frontend ne devrait pas simplement recopier le contrat de l’API externe.
+- ouvrir un système ;
+- parcourir les pages ;
+- changer la taille de page ;
+- actualiser les données.
 
-Ce choix suit les principes KISS et YAGNI appliqués au reste du projet : terminer et sécuriser le parcours principal avant d’augmenter la surface fonctionnelle.
+La pagination est gérée côté serveur.
 
-## Cache
+---
 
-Les clés principales sont :
+## Détail d’un système
+
+La page :
+
+```text
+/systems/:systemSymbol
+```
+
+charge deux ressources séparément :
+
+```text
+System
++
+Waypoints
+```
+
+Cette séparation est volontaire.
+
+Un échec de chargement ou de refresh des waypoints ne doit pas masquer un système déjà chargé avec succès.
+
+La page contient donc :
+
+```text
+System detail
+├── SystemOverview
+└── Waypoints
+    ├── Marketplace filter
+    ├── pagination
+    └── WaypointTable
+```
+
+---
+
+## Détail d’un waypoint
+
+La page :
+
+```text
+/systems/:systemSymbol/waypoints/:waypointSymbol
+```
+
+présente les informations détaillées d’un waypoint.
+
+Elle permet notamment de consulter :
+
+```text
+type
+system
+coordinates
+faction
+construction state
+marketplace status
+parent orbit
+orbitals
+traits
+modifiers
+chart
+```
+
+Les relations connues sont directement navigables.
+
+---
+
+# Organisation du module
+
+```text
+systems/
+├── api/
+│   ├── systems.api.ts
+│   └── waypoints.api.ts
+│
+├── components/
+│   ├── SystemCard.vue
+│   ├── SystemOverview.vue
+│   ├── SystemTable.vue
+│   ├── system-table.columns.ts
+│   ├── WaypointList.vue
+│   ├── WaypointOverview.vue
+│   ├── WaypointTable.vue
+│   └── waypoint-table.columns.ts
+│
+├── composables/
+│   ├── system.keys.ts
+│   ├── waypoint.keys.ts
+│   ├── use-system-query.ts
+│   ├── use-systems-query.ts
+│   ├── use-waypoint-query.ts
+│   └── use-waypoints-query.ts
+│
+├── pages/
+│   ├── SystemsPage.vue
+│   ├── SystemDetailPage.vue
+│   └── WaypointDetailPage.vue
+│
+├── schemas/
+│   ├── system.schema.ts
+│   ├── systems.schema.ts
+│   ├── waypoint.schema.ts
+│   └── waypoints.schema.ts
+│
+├── tests/
+│
+└── utils/
+    └── waypoint-status.ts
+```
+
+---
+
+# Responsabilités
+
+| Fichier                                | Responsabilité                                |
+| -------------------------------------- | --------------------------------------------- |
+| `api/systems.api.ts`                   | Liste et détail des systèmes                  |
+| `api/waypoints.api.ts`                 | Liste et détail des waypoints                 |
+| `schemas/system.schema.ts`             | Contrat runtime d’un système                  |
+| `schemas/systems.schema.ts`            | Pagination et réponse de liste Systems        |
+| `schemas/waypoint.schema.ts`           | Contrat runtime complet d’un waypoint         |
+| `schemas/waypoints.schema.ts`          | Pagination, recherche URL et filtres waypoint |
+| `composables/system.keys.ts`           | Query keys Systems                            |
+| `composables/waypoint.keys.ts`         | Query keys Waypoints                          |
+| `use-systems-query.ts`                 | Liste paginée des systèmes                    |
+| `use-system-query.ts`                  | Détail d’un système                           |
+| `use-waypoints-query.ts`               | Liste paginée et filtrée des waypoints        |
+| `use-waypoint-query.ts`                | Détail d’un waypoint                          |
+| `pages/SystemsPage.vue`                | Pagination, refresh, états et composition     |
+| `pages/SystemDetailPage.vue`           | Coordination système + waypoints              |
+| `pages/WaypointDetailPage.vue`         | Route, états et actions waypoint              |
+| `components/SystemTable.vue`           | Adaptateur Systems vers `DataTable`           |
+| `components/system-table.columns.ts`   | Colonnes métier Systems                       |
+| `components/SystemOverview.vue`        | Résumé structuré d’un système                 |
+| `components/WaypointList.vue`          | Pagination et filtre Marketplace              |
+| `components/WaypointTable.vue`         | Adaptateur Waypoints vers `DataTable`         |
+| `components/waypoint-table.columns.ts` | Colonnes métier Waypoints                     |
+| `components/WaypointOverview.vue`      | Présentation détaillée d’un waypoint          |
+| `utils/waypoint-status.ts`             | Règles de statut Marketplace                  |
+| `tests/`                               | Tests d’intégration et fonctions pures        |
+
+---
+
+# Appels réseau
+
+Le module utilise :
+
+```text
+GET /systems?page={page}&limit={limit}
+
+GET /systems/{systemSymbol}
+
+GET /systems/{systemSymbol}/waypoints?page={page}&limit={limit}
+
+GET /systems/{systemSymbol}/waypoints
+    ?page={page}
+    &limit={limit}
+    &traits=MARKETPLACE
+
+GET /systems/{systemSymbol}/waypoints/{waypointSymbol}
+```
+
+Le token est transmis explicitement aux fonctions API.
+
+Les fonctions ne lisent pas directement le store Auth.
+
+---
+
+# Validation des réponses
+
+Toutes les réponses SpaceTraders passent par les schémas Zod du module.
+
+La validation porte à la fois sur :
+
+```text
+structure
++
+cohérence métier minimale
+```
+
+---
+
+## Cohérence de pagination
+
+Pour une requête :
+
+```text
+page = 2
+limit = 20
+```
+
+la réponse doit notamment retourner :
+
+```text
+meta.page = 2
+meta.limit = 20
+```
+
+Une incohérence est considérée comme :
+
+```text
+invalid-response
+```
+
+---
+
+## Cohérence du système
+
+Pour :
+
+```text
+GET /systems/X1-TEST
+```
+
+le système retourné doit correspondre à :
+
+```text
+X1-TEST
+```
+
+L’application n’affiche pas silencieusement une autre ressource.
+
+---
+
+## Cohérence des waypoints
+
+Pour une liste demandée sous :
+
+```text
+/systems/X1-TEST/waypoints
+```
+
+les waypoints retournés doivent appartenir à :
+
+```text
+X1-TEST
+```
+
+---
+
+## Cohérence du détail waypoint
+
+Pour :
+
+```text
+GET /systems/X1-TEST/waypoints/X1-TEST-A1
+```
+
+le contrat attendu vérifie notamment :
+
+```text
+waypoint.systemSymbol === "X1-TEST"
+
+waypoint.symbol === "X1-TEST-A1"
+```
+
+Une incohérence produit une erreur explicite.
+
+---
+
+# Query keys
+
+Les principales clés sont :
 
 ```ts
 ;['systems', 'list', { page, limit }][('systems', 'detail', systemSymbol)][
@@ -221,170 +329,1465 @@ Les clés principales sont :
 ][('waypoints', 'detail', systemSymbol, waypointSymbol)]
 ```
 
-Chaque paramètre qui modifie les données demandées participe à la clé.
+Tous les paramètres influençant réellement les données demandées participent à la clé.
 
-Les clés n’incluent ni token ni identifiant de session. Le changement d’agent est protégé par le nettoyage global du QueryCache effectué par le flux d’authentification.
+---
 
-## États d’interface
+# Systems pagination
 
-| Situation                    | Comportement                                        |
-| ---------------------------- | --------------------------------------------------- |
-| Premier chargement           | État de chargement dédié                            |
-| Requête suspendue hors ligne | Message d’attente de connexion                      |
-| Chargement réussi            | Affichage des données                               |
-| Liste vide                   | État vide explicite                                 |
-| Page hors limites            | Message dédié et retour possible à la première page |
-| Erreur initiale              | Message d’erreur et relance                         |
-| Actualisation                | Données existantes conservées                       |
-| Échec d’actualisation        | Données précédentes conservées avec avertissement   |
-| System 404                   | État `System not found`                             |
-| Waypoint 404                 | État `Waypoint not found`                           |
-| Réponse invalide             | Erreur dédiée, sans valeurs de remplacement         |
-| `UNCHARTED`                  | Marketplace affiché comme inconnu                   |
+Les paramètres de liste sont conservés dans l’URL.
 
-## Navigation croisée
+Exemple :
 
-La feature Systems est reliée au reste de l’application :
+```text
+/systems?page=2&limit=20
+```
 
-- l’Overview de l’agent peut ouvrir son headquarters ;
-- les cartes et détails de vaisseaux peuvent ouvrir leur système et leurs waypoints ;
-- un waypoint peut ouvrir son système parent, son parent orbit et ses orbitals ;
-- un waypoint Marketplace peut ouvrir son marché ;
-- la page Market permet de revenir au waypoint et d’ouvrir le système parent.
+Les valeurs actuelles sont :
 
-Ces liens utilisent uniquement des identifiants réellement présents dans les données. Aucun lien vers une ressource supposée n’est fabriqué.
+```text
+page par défaut
+→ 1
 
-## Tests
+limit par défaut
+→ 10
 
-### `systems.spec.ts`
+tailles proposées
+→ 10, 20
+```
 
-Vérifie notamment :
+Les valeurs invalides retombent sur les valeurs par défaut.
+
+Changer de taille ramène automatiquement à :
+
+```text
+page = 1
+```
+
+---
+
+# SystemsPage
+
+`SystemsPage.vue` orchestre :
+
+```text
+route query
++
+pagination
++
+useSystemsQuery()
++
+refresh
++
+FeedbackState
++
+SystemTable
+```
+
+La page possède les comportements métier de la liste.
+
+Elle ne possède pas l’implémentation générique de la table.
+
+---
+
+# SystemTable
+
+La V2 utilise :
+
+```text
+SystemsPage
+    ↓
+SystemTable
+    ↓
+DataTable
+```
+
+`SystemTable.vue` fournit notamment :
+
+```text
+systems
+systemColumns
+aria-label="Systems"
+min-width="58rem"
+busy
+dimmed
+```
+
+Le rendu générique reste dans la base partagée.
+
+---
+
+# Colonnes Systems
+
+Les colonnes sont définies dans :
+
+```text
+system-table.columns.ts
+```
+
+La table expose :
+
+```text
+System
+Type
+Sector
+Coordinates
+Waypoints
+Factions
+```
+
+---
+
+## System
+
+La première colonne utilise :
+
+```text
+system.name
+```
+
+lorsqu’il est disponible.
+
+Le symbole reste visible comme identifiant technique.
+
+Le lien de détail porte un nom accessible de la forme :
+
+```text
+Open system X1-TEST
+```
+
+et utilise une icône :
+
+```text
+Eye
+```
+
+depuis :
+
+```text
+@lucide/vue
+```
+
+---
+
+## Colonne sticky
+
+La colonne System reste sticky pendant le scroll horizontal.
+
+Elle constitue l’identité principale de la ligne.
+
+L’utilisateur peut donc continuer à savoir quel système il consulte lorsqu’il parcourt les colonnes à droite.
+
+---
+
+## Type
+
+Le type est formaté pour être lisible et utilise la couleur de support :
+
+```text
+Orbit
+```
+
+dans le langage visuel de l’application.
+
+---
+
+## Sector
+
+La colonne présente :
+
+```text
+sectorSymbol
+```
+
+et, lorsqu’elle existe :
+
+```text
+constellation
+```
+
+Ces deux informations sont regroupées car elles décrivent la localisation galactique du système.
+
+---
+
+## Coordinates
+
+Les coordonnées :
+
+```text
+x, y
+```
+
+sont rendues en typographie monospace et avec chiffres tabulaires.
+
+---
+
+## Waypoints
+
+La table affiche le nombre de waypoints connus présents dans :
+
+```text
+system.waypoints
+```
+
+---
+
+## Factions
+
+Les factions connues sont regroupées dans la même cellule.
+
+Lorsqu’aucune faction n’est retournée :
+
+```text
+None
+```
+
+est affiché.
+
+L’absence de factions n’est pas traitée comme une erreur.
+
+---
+
+# Pourquoi une table pour Systems ?
+
+Chaque système expose une structure comparable :
+
+```text
+identity
+type
+sector
+coordinates
+waypoint count
+factions
+```
+
+La table améliore :
+
+- le scan visuel ;
+- la comparaison ;
+- la densité d’information ;
+- la cohérence avec Fleet et Waypoints.
+
+---
+
+# SystemCard
+
+`SystemCard.vue` n’est plus le renderer principal de la liste.
+
+Il est conservé volontairement comme représentation alternative.
+
+Cela permet d’envisager plus tard :
+
+```text
+Cards
+↔
+Table
+```
+
+sans recréer la vue carte.
+
+Aucun système de view mode n’est cependant ajouté prématurément dans la version actuelle.
+
+---
+
+# Placeholder data Systems
+
+Lors d’un changement de page compatible, `useSystemsQuery()` peut conserver temporairement les résultats précédents.
+
+La réutilisation n’a lieu que si :
+
+```text
+ancienne limit
+===
+nouvelle limit
+```
+
+La table reçoit alors :
+
+```text
+isPlaceholderData
+```
+
+et devient visuellement atténuée.
+
+---
+
+# SystemDetailPage
+
+Le détail d’un système charge indépendamment :
+
+```text
+useSystemQuery()
+```
+
+et :
+
+```text
+useWaypointsQuery()
+```
+
+Le système et ses waypoints ne forment donc pas une query unique.
+
+---
+
+## Pourquoi deux queries ?
+
+Les deux ressources possèdent des cycles de vie différents.
+
+Par exemple :
+
+```text
+System
+→ chargé avec succès
+
+Waypoints
+→ erreur réseau
+```
+
+Le système reste visible.
+
+La page peut afficher :
+
+```text
+SystemOverview
++
+erreur Waypoints
+```
+
+sans perdre les données déjà obtenues.
+
+---
+
+# SystemOverview
+
+Le résumé d’un système présente actuellement :
+
+```text
+Sector
+Constellation
+Coordinates
+Known waypoints
+Factions
+```
+
+Les valeurs sont organisées dans une grille structurée avec :
+
+```html
+<dl></dl>
+```
+
+plutôt que dans une succession de cartes indépendantes.
+
+---
+
+# Liste des waypoints
+
+La section Waypoints suit cette structure :
+
+```text
+SystemDetailPage
+    ↓
+WaypointList
+    ↓
+WaypointTable
+    ↓
+DataTable
+```
+
+Les responsabilités sont volontairement séparées.
+
+---
+
+# WaypointList
+
+`WaypointList.vue` possède :
+
+```text
+count
+Marketplace only
+page size
+pagination controls
+empty states
+```
+
+Il ne définit pas directement les cellules de la table.
+
+---
+
+# Pagination Waypoints
+
+Les paramètres sont conservés dans l’URL du système.
+
+Exemple :
+
+```text
+/systems/X1-TEST?page=2&limit=10
+```
+
+Les tailles autorisées sont :
+
+```text
+10
+20
+```
+
+Changer la taille ramène à :
+
+```text
+page = 1
+```
+
+---
+
+# Filtre Marketplace
+
+L’interface expose volontairement un seul filtre métier :
+
+```text
+Marketplace only
+```
+
+L’URL utilise :
+
+```text
+marketplace=true
+```
+
+Exemple :
+
+```text
+/systems/X1-TEST?page=1&limit=10&marketplace=true
+```
+
+La couche page traduit ensuite cet état en :
+
+```ts
+traits: ['MARKETPLACE']
+```
+
+et l’API construit :
+
+```text
+traits=MARKETPLACE
+```
+
+---
+
+## Pourquoi ne pas exposer directement `traits` dans l’URL ?
+
+L’interface répond à un besoin précis :
+
+```text
+montrer uniquement les waypoints avec un marché connu
+```
+
+Elle ne cherche pas à reproduire toute la surface technique de filtrage de l’API SpaceTraders.
+
+L’URL reste donc centrée sur l’intention utilisateur.
+
+---
+
+# Reset lors du changement de filtre
+
+Activer ou désactiver :
+
+```text
+Marketplace only
+```
+
+ramène automatiquement à :
+
+```text
+page = 1
+```
+
+Même principe lors d’un changement de taille.
+
+Cela évite de conserver un numéro de page devenu invalide après modification du jeu de résultats.
+
+---
+
+# Placeholder data Waypoints
+
+La page précédente peut être conservée temporairement uniquement lorsque :
+
+```text
+page size identique
++
+traits identiques
+```
+
+Si le filtre Marketplace change :
+
+```text
+ancienne liste
+≠
+nouvelle population
+```
+
+les anciennes données ne sont donc pas utilisées comme placeholder.
+
+---
+
+# WaypointTable
+
+La V2 utilise :
+
+```text
+WaypointList
+    ↓
+WaypointTable
+    ↓
+DataTable
+```
+
+`WaypointTable` fournit :
+
+```text
+waypoints
+waypointColumns
+aria-label="Waypoints"
+min-width="68rem"
+busy
+dimmed
+```
+
+---
+
+# Colonnes Waypoints
+
+La table expose :
+
+```text
+Waypoint
+Type
+Coordinates
+Orbitals
+Faction
+Traits
+```
+
+---
+
+## Waypoint
+
+La première colonne contient le symbole du waypoint.
+
+Le lien de détail porte un nom accessible :
+
+```text
+View waypoint X1-TEST-A1
+```
+
+et utilise l’icône Lucide :
+
+```text
+Eye
+```
+
+Si le waypoint est en construction, la cellule affiche également :
+
+```text
+Under construction
+```
+
+---
+
+## Colonne sticky
+
+Comme pour Fleet et Systems, l’identité principale reste sticky pendant le scroll horizontal.
+
+Cela permet de conserver le contexte de la ligne.
+
+---
+
+## Coordinates
+
+Les coordonnées sont présentées en monospace :
+
+```text
+x, y
+```
+
+avec chiffres tabulaires.
+
+---
+
+## Orbitals
+
+La colonne indique :
+
+```text
+waypoint.orbitals.length
+```
+
+Elle représente uniquement le nombre d’objets orbitaux connus.
+
+---
+
+## Faction
+
+Si une faction est fournie :
+
+```text
+faction.symbol
+```
+
+est affiché.
+
+Sinon :
+
+```text
+None reported
+```
+
+est utilisé.
+
+---
+
+# Traits
+
+Les traits sont rendus sous forme de petits éléments visuels dans la cellule.
+
+Ils restent une collection car un waypoint peut posséder plusieurs caractéristiques.
+
+Lorsqu’aucun trait n’est retourné :
+
+```text
+No traits reported.
+```
+
+est affiché.
+
+---
+
+## Trait Marketplace
+
+Le trait :
+
+```text
+MARKETPLACE
+```
+
+est visuellement distingué avec la couleur Signal.
+
+Il s’agit d’une information réellement actionnable pour l’utilisateur car elle permet l’accès au Market.
+
+---
+
+# Waypoints non cartographiés
+
+Le trait :
+
+```text
+UNCHARTED
+```
+
+possède une signification importante.
+
+Un waypoint non cartographié peut ne pas exposer tous ses traits réels.
+
+L’absence de :
+
+```text
+MARKETPLACE
+```
+
+ne permet donc pas nécessairement de conclure qu’aucun marché n’existe.
+
+La fonction :
+
+```text
+getMarketplaceStatus()
+```
+
+centralise cette règle.
+
+---
+
+## Statuts Marketplace
+
+Trois états sont distingués.
+
+### Marketplace connu
+
+Si le waypoint contient :
+
+```text
+MARKETPLACE
+```
+
+le statut est :
+
+```text
+Available
+```
+
+---
+
+### Waypoint non cartographié
+
+Si le waypoint ne contient pas Marketplace mais possède :
+
+```text
+UNCHARTED
+```
+
+le statut est :
+
+```text
+Unknown
+```
+
+---
+
+### Waypoint cartographié sans Marketplace
+
+Dans les autres cas :
+
+```text
+No marketplace trait
+```
+
+est affiché.
+
+L’application n’invente donc jamais un marché absent du contrat reçu.
+
+---
+
+# WaypointDetailPage
+
+La page de détail utilise :
+
+```text
+systemSymbol
++
+waypointSymbol
+```
+
+depuis la route.
+
+Elle exécute :
+
+```text
+useWaypointQuery()
+```
+
+et orchestre :
+
+```text
+loading
+404
+invalid route
+refresh
+market action
+WaypointOverview
+```
+
+---
+
+# Header Waypoint
+
+Le header expose :
+
+```text
+Waypoint
+symbol
+type
+system symbol
+```
+
+ainsi que les actions disponibles.
+
+---
+
+## Open market
+
+Le bouton :
+
+```text
+Open market
+```
+
+n’est présent que lorsque :
+
+```text
+hasWaypointTrait(
+  waypoint,
+  'MARKETPLACE',
+)
+```
+
+retourne `true`.
+
+Un statut :
+
+```text
+Unknown
+```
+
+sur un waypoint `UNCHARTED` ne suffit pas à afficher l’action.
+
+La navigation Market nécessite donc une connaissance réelle du trait.
+
+---
+
+# WaypointOverview
+
+`WaypointOverview.vue` sépare les différentes catégories d’information selon leur nature.
+
+La structure principale est :
+
+```text
+WaypointOverview
+├── Overview
+├── Traits
+├── Modifiers
+├── Orbitals
+└── Chart
+```
+
+---
+
+# Overview
+
+La partie Overview utilise un :
+
+```html
+<dl></dl>
+```
+
+en grille.
+
+Elle présente :
+
+```text
+Type
+System
+Coordinates
+Faction
+Construction
+Marketplace
+Parent orbit
+Orbitals
+Chart
+```
+
+Ces valeurs sont structurées et comparables.
+
+---
+
+# System link
+
+Le système parent est directement navigable.
+
+Le lien expose un nom accessible :
+
+```text
+Open system X1-TEST
+```
+
+---
+
+# Construction
+
+Deux états sont présentés :
+
+```text
+Operational
+Under construction
+```
+
+Le second utilise le style Warning.
+
+---
+
+# Parent orbit
+
+Lorsque :
+
+```text
+waypoint.orbits
+```
+
+est présent, le parent est un lien vers le détail du waypoint correspondant.
+
+Le nom accessible suit :
+
+```text
+Open parent waypoint {symbol}
+```
+
+Lorsqu’aucun parent n’est déclaré :
+
+```text
+None
+```
+
+est affiché.
+
+---
+
+# Traits detail
+
+Les traits détaillés sont rendus comme des surfaces indépendantes.
+
+Chaque trait peut posséder :
+
+```text
+name
+symbol
+description
+```
+
+Le trait Marketplace bénéficie d’une bordure Signal et d’un label dédié.
+
+---
+
+## Pourquoi des cards ici ?
+
+Contrairement à une liste de waypoints, les traits ne représentent pas plusieurs entités à comparer sur les mêmes colonnes.
+
+Ils sont des informations descriptives hétérogènes.
+
+Des surfaces indépendantes sont donc plus adaptées qu’une table.
+
+---
+
+# Modifiers
+
+Les modifiers sont affichés uniquement lorsqu’ils existent.
+
+Ils représentent des effets temporaires et utilisent la couleur Warning.
+
+La section entière n’est pas rendue lorsque :
+
+```text
+modifiers
+```
+
+est absent ou vide.
+
+---
+
+# Orbitals
+
+Les orbitals sont affichés sous forme de liens indépendants.
+
+Chaque lien utilise :
+
+```text
+orbital.symbol
+```
+
+pour construire la route du waypoint correspondant.
+
+Le nom accessible suit :
+
+```text
+Open orbital waypoint {symbol}
+```
+
+La section n’est rendue que lorsqu’au moins un orbital existe.
+
+---
+
+# Chart
+
+La section Chart est affichée uniquement lorsque :
+
+```text
+waypoint.chart
+```
+
+existe.
+
+Elle peut présenter :
+
+```text
+submittedBy
+submittedOn
+```
+
+---
+
+## Métadonnées de chart partielles
+
+La présence d’un objet `chart` ne garantit pas que toutes les métadonnées soient fournies.
+
+Si un chart existe mais qu’aucun :
+
+```text
+submittedBy
+submittedOn
+```
+
+n’est disponible, l’interface affiche :
+
+```text
+Chart available, but submission metadata was not reported.
+```
+
+Elle ne fabrique pas de valeur de remplacement.
+
+---
+
+# Navigation croisée
+
+Systems participe à plusieurs parcours.
+
+## Depuis Agent
+
+Le headquarters d’un agent peut mener vers son waypoint.
+
+---
+
+## Depuis Fleet
+
+Un vaisseau peut ouvrir :
+
+```text
+System
+Waypoint
+```
+
+depuis sa localisation.
+
+---
+
+## Depuis System
+
+Un système ouvre ses waypoints.
+
+---
+
+## Depuis Waypoint
+
+Un waypoint peut ouvrir :
+
+```text
+System
+Parent waypoint
+Orbital waypoint
+Market
+```
+
+selon les données réellement disponibles.
+
+---
+
+## Depuis Market
+
+La page Market peut revenir vers :
+
+```text
+Waypoint
+System
+```
+
+Les modules restent donc reliés par :
+
+```text
+route names
++
+symbols
+```
+
+et non par des imports de composants entre domaines.
+
+---
+
+# Responsive
+
+`SystemTable` utilise une largeur minimale de :
+
+```text
+58rem
+```
+
+`WaypointTable` utilise :
+
+```text
+68rem
+```
+
+Lorsque le viewport devient plus étroit :
+
+```text
+DataTable
+→ scroll horizontal local
+```
+
+La page entière ne doit pas créer de débordement horizontal.
+
+Les premières colonnes sticky permettent de conserver l’identité des lignes.
+
+---
+
+# Refresh
+
+Les trois niveaux peuvent être actualisés indépendamment :
+
+```text
+Systems
+System
+Waypoints
+Waypoint
+```
+
+Lorsqu’une ressource est déjà chargée, le refresh ne supprime pas immédiatement les données existantes.
+
+---
+
+## Échec pendant refresh
+
+Le comportement est :
+
+```text
+données précédentes
++
+warning
+```
+
+et non :
+
+```text
+écran entièrement remplacé par une erreur
+```
+
+Cela s’applique notamment à :
+
+```text
+SystemsPage
+SystemDetailPage
+WaypointDetailPage
+```
+
+---
+
+# Offline
+
+Lorsqu’une query ne peut pas partir faute de connexion :
+
+```text
+Waiting for connection
+```
+
+est présenté.
+
+Lorsqu’un refresh est suspendu alors que des données existent déjà, ces données restent visibles.
+
+---
+
+# Liste vide et page hors limites
+
+Les listes distinguent plusieurs situations.
+
+## Aucun système
+
+```text
+No systems available
+```
+
+---
+
+## Page Systems vide alors que des données existent ailleurs
+
+```text
+No systems on this page
+```
+
+avec possibilité de revenir à la première page.
+
+---
+
+## Aucun waypoint
+
+```text
+No waypoints available
+```
+
+---
+
+## Aucun waypoint Marketplace
+
+Avec le filtre actif :
+
+```text
+No marketplace waypoints
+```
+
+et l’utilisateur peut revenir à :
+
+```text
+Show all waypoints
+```
+
+---
+
+# 404
+
+Le détail distingue les absences réelles :
+
+```text
+System not found
+Waypoint not found
+```
+
+des erreurs réseau ou de validation.
+
+Un `404` ne déclenche pas de retry automatique sans fin.
+
+---
+
+# Authentification
+
+Le module ne possède pas sa propre logique de logout sur erreur d’authentification.
+
+Une erreur :
+
+```text
+kind = authentication
+```
+
+est gérée au niveau du QueryCache global.
+
+Le parcours devient :
+
+```text
+session invalidée
+→ cache nettoyé
+→ AppLayout
+→ Login
+```
+
+---
+
+# Utilitaires
+
+La règle métier Marketplace reste dans :
+
+```text
+systems/utils/waypoint-status.ts
+```
+
+Elle expose notamment :
+
+```ts
+hasWaypointTrait()
+
+getMarketplaceStatus()
+```
+
+Ces fonctions restent proches du module car elles décrivent une règle spécifique aux Waypoints.
+
+Les formatters génériques restent dans :
+
+```text
+shared/utils/formatters.ts
+```
+
+---
+
+# Tests
+
+Le module possède plusieurs suites complémentaires.
+
+## `systems.spec.ts`
+
+La liste Systems vérifie notamment :
 
 - transmission du token ;
 - fallback des paramètres d’URL invalides ;
-- pagination et changement de taille ;
-- liste vide et page hors limites ;
-- réponse imbriquée invalide ;
+- pagination ;
+- changement de taille ;
+- liste vide ;
+- page hors limites ;
+- réponse invalide ;
 - pagination incohérente ;
-- conservation des données après un échec d’actualisation ;
-- absence de fuite du cache de l’agent précédent ;
+- conservation des données après un refresh échoué ;
+- isolation entre deux sessions ;
 - navigation vers le détail d’un système.
 
-### `system-detail.spec.ts`
+---
 
-Vérifie notamment :
+## `system-detail.spec.ts`
+
+Le détail System vérifie notamment :
 
 - chargement indépendant du système et des waypoints ;
-- conservation du système si les waypoints échouent ;
+- conservation du système lorsque Waypoints échoue ;
 - pagination des waypoints ;
-- filtre Marketplace et conservation dans l’URL ;
-- reset de la pagination lorsque le filtre change ;
-- comportement `UNCHARTED` ;
-- réponses waypoints invalides ;
-- conservation des waypoints lors d’un refresh échoué ;
-- système introuvable ou symbole incohérent ;
+- filtre Marketplace ;
+- persistance du filtre dans l’URL ;
+- reset de page lors du changement de filtre ;
+- réponse Waypoints invalide ;
+- refresh Waypoints échoué ;
+- système introuvable ;
+- système incohérent ;
 - navigation vers le détail d’un waypoint.
 
-### `waypoint-detail.spec.ts`
-
-Vérifie notamment :
-
-- chargement avec le token actif ;
-- liens système, parent orbit et orbitals ;
-- modifiers et chart ;
-- Marketplace inconnu sur un waypoint `UNCHARTED` ;
-- réponses incomplètes ou incohérentes ;
-- 404 ;
-- retry après une erreur initiale ;
-- conservation des données après un refresh échoué ;
-- ouverture du marché uniquement lorsque `MARKETPLACE` est connu.
-
-### `waypoint-status.spec.ts`
-
-Vérifie la détection des traits et la règle de statut Marketplace.
-
-Les tests d’intégration utilisent MSW et ne dépendent pas d’un compte SpaceTraders réel.
-
-### `systems-market.spec.ts`
-
-Un parcours Playwright transversal complète les tests d’intégration.
-
-Il vérifie le scénario critique :
+La liste de waypoints est testée via la table sémantique :
 
 ```text
-Connexion
-→ Systems
-→ System detail
-→ Waypoint detail
-→ Market
-→ retour Waypoint
-→ retour System
-→ retour Systems
+aria-label="Waypoints"
 ```
 
-## Limites, choix de périmètre et évolutions possibles
+---
 
-Plusieurs fonctionnalités ont été volontairement laissées hors de cette version afin de conserver un module simple et correctement testé.
+## `waypoint-detail.spec.ts`
 
-### Filtrage
+La fiche Waypoint vérifie notamment :
 
-Seul le filtre Marketplace est exposé.
+- utilisation de la session active ;
+- lien vers le système ;
+- lien vers le parent ;
+- liens orbitals ;
+- traits ;
+- modifiers ;
+- chart ;
+- état Marketplace `Unknown` pour `UNCHARTED` ;
+- 404 ;
+- réponse incomplète ;
+- réponse incohérente ;
+- retry après erreur initiale ;
+- conservation des données lors d’un refresh échoué ;
+- présence du bouton Market uniquement avec `MARKETPLACE`.
 
-Les filtres génériques par type et par traits multiples seraient une évolution logique, mais ils méritent un vrai modèle de filtrage plutôt qu’une accumulation de paramètres directement couplés à SpaceTraders.
+---
 
-### Exploration visuelle
+## `waypoint-status.spec.ts`
 
-Aucune carte graphique du système n’est proposée.
+Cette suite teste directement :
 
-Les coordonnées sont disponibles et pourraient permettre ultérieurement :
+```text
+hasWaypointTrait()
+getMarketplaceStatus()
+```
 
-- une carte 2D des waypoints ;
-- une représentation des relations orbitales ;
-- une visualisation de la position des vaisseaux ;
-- une navigation plus spatiale entre les ressources.
+et protège notamment les trois états :
 
-Cette fonctionnalité aurait demandé un effort UI important sans améliorer les responsabilités principales évaluées dans cette version.
+```text
+Available
+Unknown
+No marketplace trait
+```
 
-### Recherche
+---
 
-Il n’existe pas de recherche globale par symbole.
+# E2E
 
-Une recherche uniquement appliquée à la page actuellement chargée aurait été trompeuse puisqu’elle n’aurait pas réellement recherché dans l’ensemble des systèmes SpaceTraders.
+Le second parcours Playwright couvre :
 
-### Préchargement
+```text
+Login
+    ↓
+Systems
+    ↓
+System detail
+    ↓
+Waypoint detail
+    ↓
+Market
+    ↓
+navigation retour
+```
 
-Le détail de chaque waypoint n’est pas préchargé depuis la liste.
+Les sélecteurs s’appuient sur les noms accessibles.
 
-La réponse de liste contient suffisamment d’informations pour son affichage. Charger automatiquement le détail de chaque élément aurait créé un nombre de requêtes inutilement élevé.
+Exemples :
 
-### Contexte de navigation
+```text
+Systems
+Waypoints
 
-Le lien `Back to system` retourne vers la route canonique du système.
+Open system X1-TEST
 
-Il ne restaure actuellement pas la page et le filtre Marketplace précédemment sélectionnés.
+View waypoint X1-TEST-A1
 
-Le bouton retour natif du navigateur conserve naturellement cet historique.
+Open waypoint market
+```
 
-Une amélioration possible consisterait à transmettre explicitement un contexte de retour ou à conserver certains paramètres de navigation, mais ce comportement n’a pas été ajouté uniquement pour masquer un cas d’usage secondaire.
+Le test reste ainsi découplé de la structure CSS.
 
-### Actualisation
+---
 
-Il n’y a pas de polling automatique.
+# Choix de conception
 
-Les données peuvent être actualisées manuellement et TanStack Query gère également les comportements liés à la reconnexion.
+## Systems et Waypoints dans le même module
 
-Un polling régulier devrait être ajouté uniquement si un besoin produit justifie la fraîcheur supplémentaire des données et son coût réseau.
+Les deux ressources appartiennent au même parcours d’exploration.
 
-### Validation finale
+Un waypoint est toujours contextualisé par :
 
-La recette manuelle doit encore confirmer :
+```text
+systemSymbol
+```
 
-- les différentes largeurs d’écran ;
-- les textes longs ;
-- la navigation clavier ;
-- la visibilité du focus ;
-- les débordements ;
-- les pages vides ;
-- le rechargement direct des routes profondes après déploiement.
+Les séparer en deux modules apporterait ici davantage d’indirection que de bénéfice.
 
-La réussite des tests automatisés ne remplace pas cette validation visuelle.
+---
+
+## Markets séparé
+
+Le marché constitue en revanche un domaine suffisamment spécifique pour posséder :
+
+```text
+schemas
+query
+API
+components
+page
+tests
+```
+
+dans son propre module.
+
+---
+
+## Table pour les listes
+
+Systems et Waypoints contiennent des entités homogènes avec des attributs comparables.
+
+La table est donc la représentation par défaut.
+
+---
+
+## Cards pour les détails hétérogènes
+
+Traits, modifiers et orbitals possèdent une structure plus descriptive et ne bénéficient pas d’une comparaison colonne par colonne.
+
+Ils restent donc présentés sous forme de surfaces indépendantes.
+
+---
+
+## Filtre Marketplace volontairement limité
+
+Le frontend ne reproduit pas tous les filtres SpaceTraders.
+
+Il expose uniquement le besoin actuellement utile dans le produit :
+
+```text
+Marketplace only
+```
+
+---
+
+# Limites actuelles
+
+La version actuelle n’implémente pas :
+
+- carte graphique de la galaxie ;
+- recherche globale par symbole ;
+- recherche textuelle des systèmes ;
+- tri interactif ;
+- filtres génériques par type ;
+- filtres arbitraires par trait ;
+- préchargement automatique de tous les détails Waypoint ;
+- visualisation orbitale graphique ;
+- persistance d’un futur mode Cards/Table ;
+- restauration manuelle des filtres lors d’un lien `Back to system`.
+
+Pour ce dernier point, le bouton Back du navigateur conserve naturellement l’historique complet de navigation.
+
+Ces fonctionnalités pourront être ajoutées lorsqu’un besoin produit concret le justifiera.
