@@ -1,39 +1,54 @@
 <script setup lang="ts">
 import { formatLabel, formatNumber } from '@/shared/utils/formatters'
+
 import type { Ship } from '../../schemas/ship.schema'
 
-defineProps<{ crew: Ship['crew'] }>()
+defineProps<{
+  crew: Ship['crew']
+}>()
 </script>
 
 <template>
-  <section
-    class="flex min-w-0 flex-col rounded-xl border bg-card p-5 text-card-foreground shadow-sm"
-  >
-    <h2 class="text-lg font-semibold">Crew</h2>
+  <section class="flex min-w-0 flex-col border border-border bg-card text-card-foreground">
+    <header class="border-b border-border px-5 py-4">
+      <h2 class="text-base font-semibold">Crew</h2>
 
-    <p v-if="crew.current === 0 && crew.required === 0" class="mt-4 text-sm text-muted-foreground">
-      No crew is currently on board, and none is required.
-    </p>
+      <p class="mt-1 text-sm text-muted-foreground">Current staffing and operating conditions.</p>
+    </header>
 
-    <dl class="mt-5 grid grid-cols-2 gap-5 text-sm">
-      <div class="min-w-0">
-        <dt class="text-muted-foreground">Shift rotation</dt>
-        <dd class="mt-1 font-medium capitalize">
-          {{ formatLabel(crew.rotation) }}
-        </dd>
-      </div>
+    <div class="flex flex-1 flex-col p-5">
+      <p v-if="crew.current === 0 && crew.required === 0" class="text-sm text-muted-foreground">
+        No crew is currently on board, and none is required.
+      </p>
 
-      <div class="min-w-0">
-        <dt class="text-muted-foreground">Morale</dt>
-        <dd class="mt-1 font-medium">
-          {{ crew.current > 0 ? `${crew.morale}%` : 'Not applicable' }}
-        </dd>
-      </div>
+      <dl
+        class="grid gap-px border border-border bg-border"
+        :class="crew.current === 0 && crew.required === 0 ? 'mt-5' : ''"
+      >
+        <div class="grid grid-cols-2 gap-4 bg-card px-4 py-3">
+          <dt class="text-xs text-muted-foreground">Shift rotation</dt>
 
-      <div class="col-span-2 min-w-0">
-        <dt class="text-muted-foreground">Wages per crew member</dt>
-        <dd class="mt-1 font-medium">{{ formatNumber(crew.wages) }} credits / hour</dd>
-      </div>
-    </dl>
+          <dd class="text-right font-mono text-sm capitalize">
+            {{ formatLabel(crew.rotation) }}
+          </dd>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 bg-card px-4 py-3">
+          <dt class="text-xs text-muted-foreground">Morale</dt>
+
+          <dd class="text-right font-mono text-sm tabular-nums">
+            {{ crew.current > 0 ? `${crew.morale}%` : 'Not applicable' }}
+          </dd>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 bg-card px-4 py-3">
+          <dt class="text-xs text-muted-foreground">Wages / crew / hour</dt>
+
+          <dd class="text-right font-mono text-sm tabular-nums">
+            {{ formatNumber(crew.wages) }} CR
+          </dd>
+        </div>
+      </dl>
+    </div>
   </section>
 </template>

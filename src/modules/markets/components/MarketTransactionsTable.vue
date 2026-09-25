@@ -1,106 +1,121 @@
 <script setup lang="ts">
-import { FlexRender, tableFeatures, useTable, type ColumnDef } from '@tanstack/vue-table'
-import { toRef } from 'vue'
+import { h } from 'vue'
+
+import type { DataTableColumnDef } from '@/shared/components/table/data-table'
+import DataTable from '@/shared/components/table/DataTable.vue'
+import { formatDate, formatLabel, formatNumber } from '@/shared/utils/formatters'
 
 import type { Market } from '../schemas/market.schema'
-import { formatDate, formatLabel, formatNumber } from '@/shared/utils/formatters'
 
 type MarketTransaction = NonNullable<Market['transactions']>[number]
 
-const props = defineProps<{
+defineProps<{
   transactions: MarketTransaction[]
 }>()
 
-const features = tableFeatures({})
-
-const columns: Array<ColumnDef<typeof features, MarketTransaction>> = [
+const columns: DataTableColumnDef<MarketTransaction>[] = [
   {
     accessorKey: 'tradeSymbol',
     header: 'Good',
-    cell: (info) => formatLabel(info.getValue<string>()),
+
+    meta: {
+      className: 'w-44',
+      headerClassName: 'sticky left-0 z-20 border-r border-border bg-background',
+      cellClassName:
+        'sticky left-0 z-10 border-r border-border bg-card font-medium capitalize transition-colors group-hover:bg-background',
+    },
+
+    cell: ({ row }) => formatLabel(row.original.tradeSymbol),
   },
+
   {
     accessorKey: 'type',
     header: 'Type',
-    cell: (info) => formatLabel(info.getValue<string>()),
+
+    meta: {
+      className: 'w-28',
+      cellClassName: 'capitalize',
+    },
+
+    cell: ({ row }) => formatLabel(row.original.type),
   },
+
   {
     accessorKey: 'shipSymbol',
     header: 'Ship',
+
+    meta: {
+      className: 'w-44',
+      cellClassName: 'font-mono text-xs',
+    },
   },
+
   {
     accessorKey: 'units',
     header: 'Units',
-    cell: (info) => formatNumber(info.getValue<number>()),
+
+    meta: {
+      align: 'right',
+      className: 'w-24',
+      cellClassName: 'font-mono tabular-nums',
+    },
+
+    cell: ({ row }) => formatNumber(row.original.units),
   },
+
   {
     accessorKey: 'pricePerUnit',
     header: 'Unit price',
-    cell: (info) => formatNumber(info.getValue<number>()),
+
+    meta: {
+      align: 'right',
+      className: 'w-32',
+      cellClassName: 'font-mono tabular-nums',
+    },
+
+    cell: ({ row }) => formatNumber(row.original.pricePerUnit),
   },
+
   {
     accessorKey: 'totalPrice',
     header: 'Total',
-    cell: (info) => formatNumber(info.getValue<number>()),
+
+    meta: {
+      align: 'right',
+      className: 'w-32',
+      cellClassName: 'font-mono font-medium tabular-nums',
+    },
+
+    cell: ({ row }) => formatNumber(row.original.totalPrice),
   },
+
   {
     accessorKey: 'timestamp',
     header: 'Date',
-    cell: (info) => formatDate(info.getValue<string>()),
+
+    meta: {
+      className: 'w-52',
+      cellClassName: 'whitespace-nowrap',
+    },
+
+    cell: ({ row }) =>
+      h(
+        'time',
+        {
+          datetime: row.original.timestamp,
+          class: 'font-mono text-xs text-muted-foreground',
+        },
+        formatDate(row.original.timestamp),
+      ),
   },
 ]
-
-const data = toRef(props, 'transactions')
-
-const table = useTable({
-  features,
-  columns,
-  data,
-})
-
-const numericColumns = new Set(['units', 'pricePerUnit', 'totalPrice'])
-
-const labelColumns = new Set(['tradeSymbol', 'type'])
 </script>
 
 <template>
-  <div class="overflow-x-auto rounded-xl border">
-    <table class="w-full min-w-3xl text-left text-sm">
-      <thead class="bg-muted">
-        <tr v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-          <th
-            v-for="header in headerGroup.headers"
-            :key="header.id"
-            class="px-4 py-3 font-medium"
-            :class="{
-              'text-right': numericColumns.has(header.column.id),
-            }"
-          >
-            <FlexRender v-if="!header.isPlaceholder" :header="header" />
-          </th>
-        </tr>
-      </thead>
-
-      <tbody class="divide-y">
-        <tr v-for="row in table.getRowModel().rows" :key="row.id">
-          <td
-            v-for="cell in row.getAllCells()"
-            :key="cell.id"
-            class="px-4 py-4"
-            :class="{
-              'text-right tabular-nums': numericColumns.has(cell.column.id),
-
-              'font-medium': cell.column.id === 'tradeSymbol' || cell.column.id === 'totalPrice',
-
-              capitalize: labelColumns.has(cell.column.id),
-
-              'whitespace-nowrap': cell.column.id === 'timestamp',
-            }"
-          >
-            <FlexRender :cell="cell" />
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <DataTable
+    :data="transactions"
+    :columns="columns"
+    aria-label="Market transactions"
+    min-width="64rem"
+  />
 </template>

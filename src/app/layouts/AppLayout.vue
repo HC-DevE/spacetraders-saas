@@ -37,7 +37,7 @@ watch(
 
     <AppNavigation />
 
-    <main id="main-content" tabindex="-1" class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+    <main id="main-content" tabindex="-1" class="mx-auto max-w-6xl px-4 py-7 sm:px-6 sm:py-8">
       <RouterView v-if="auth.hasToken" />
     </main>
   </div>

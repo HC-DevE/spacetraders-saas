@@ -1,265 +1,514 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { Eye, EyeOff } from '@lucide/vue'
+import { h, ref } from 'vue'
 
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
+import DataTable from '@/shared/components/table/DataTable.vue'
+import type { DataTableColumnDef } from '@/shared/components/table/data-table'
 import { Input } from '@/shared/components/ui/input'
 import { Label } from '@/shared/components/ui/label'
+import { formatNumber } from '@/shared/utils/formatters'
 
-const scenarios = [
-  { value: 'success', label: 'Success' },
-  { value: 'loading', label: 'Initial loading' },
-  { value: 'empty', label: 'Empty result' },
-  { value: 'error', label: 'Initial error' },
-  { value: 'refreshing', label: 'Refreshing existing data' },
-  { value: 'refresh-error', label: 'Refresh failed' },
+type DemoStatus = 'Operational' | 'In transit' | 'Unknown'
+
+type DemoRow = {
+  symbol: string
+  type: string
+  status: DemoStatus
+  location: string
+  capacity: number
+  value: number
+}
+
+const agentName = ref('EXPLORER')
+const tokenPreview = ref('st-example-agent-token')
+const showToken = ref(false)
+
+const palette = [
+  {
+    name: 'Ink',
+    value: '#0c0d10',
+    role: 'Application background',
+    className: 'bg-ink text-paper',
+  },
+  {
+    name: 'Panel',
+    value: '#16181c',
+    role: 'Secondary surfaces',
+    className: 'bg-panel text-paper',
+  },
+  {
+    name: 'Signal',
+    value: '#e8a33d',
+    role: 'Live and interactive accent',
+    className: 'bg-signal text-ink',
+  },
+  {
+    name: 'Orbit',
+    value: '#7c9cb8',
+    role: 'Informational state',
+    className: 'bg-orbit text-ink',
+  },
+  {
+    name: 'Alert',
+    value: '#c1594a',
+    role: 'Critical and destructive state',
+    className: 'bg-alert text-paper',
+  },
+  {
+    name: 'Paper',
+    value: '#e8e6e1',
+    role: 'Primary content',
+    className: 'bg-paper text-ink',
+  },
 ] as const
 
-type Scenario = (typeof scenarios)[number]['value']
-
-const scenario = ref<Scenario>('success')
-const agentName = ref('EXPLORER')
-
-const isRefreshing = computed(() => scenario.value === 'refreshing')
-
-const ships = [
+const demoRows: DemoRow[] = [
   {
     symbol: 'EXPLORER-1',
-    role: 'Command ship',
+    type: 'Command ship',
+    status: 'Operational',
     location: 'X1-HZ83-A1',
-    fuel: '400 / 400',
-    cargo: '0 / 40',
+    capacity: 40,
+    value: 125_000,
   },
   {
     symbol: 'EXPLORER-2',
-    role: 'Survey probe',
-    location: 'X1-HZ83-A1',
-    fuel: '100 / 100',
-    cargo: '0 / 0',
+    type: 'Survey probe',
+    status: 'In transit',
+    location: 'X1-HZ83-B4',
+    capacity: 0,
+    value: 48_500,
+  },
+  {
+    symbol: 'EXPLORER-3',
+    type: 'Light hauler',
+    status: 'Unknown',
+    location: 'X1-HZ83-C2',
+    capacity: 80,
+    value: 212_750,
   },
 ]
 
-function changeScenario(event: Event) {
-  if (!(event.target instanceof HTMLSelectElement)) return
-
-  const value = event.target.value
-  const selected = scenarios.find((item) => item.value === value)
-
-  if (selected) {
-    scenario.value = selected.value
-  }
+const statusClasses: Record<DemoStatus, string> = {
+  Operational: 'text-signal',
+  'In transit': 'text-orbit',
+  Unknown: 'text-muted-foreground',
 }
 
-function showSuccess() {
-  scenario.value = 'success'
-}
+const demoColumns: DataTableColumnDef<DemoRow>[] = [
+  {
+    accessorKey: 'symbol',
+    header: 'Asset',
+
+    meta: {
+      className: 'w-56',
+      headerClassName: 'sticky left-0 z-20 border-r border-border bg-background',
+      cellClassName:
+        'sticky left-0 z-10 border-r border-border bg-card transition-colors group-hover:bg-background',
+    },
+
+    cell: ({ row }) =>
+      h(
+        'div',
+        {
+          class: 'min-w-0',
+        },
+        [
+          h(
+            'p',
+            {
+              class: 'truncate font-mono text-sm font-medium text-foreground',
+            },
+            row.original.symbol,
+          ),
+
+          h(
+            'p',
+            {
+              class: 'mt-1 truncate text-xs text-muted-foreground',
+            },
+            row.original.type,
+          ),
+        ],
+      ),
+  },
+
+  {
+    accessorKey: 'status',
+    header: 'Status',
+
+    meta: {
+      className: 'w-36',
+    },
+
+    cell: ({ row }) => {
+      const status = row.original.status
+
+      return h(
+        'span',
+        {
+          class: ['inline-flex items-center gap-2 text-sm font-medium', statusClasses[status]],
+        },
+        [
+          h('span', {
+            class: 'size-1.5 shrink-0 rounded-full bg-current',
+            'aria-hidden': 'true',
+          }),
+
+          status,
+        ],
+      )
+    },
+  },
+
+  {
+    accessorKey: 'location',
+    header: 'Location',
+
+    meta: {
+      className: 'w-44',
+      cellClassName: 'font-mono text-xs text-muted-foreground',
+    },
+  },
+
+  {
+    accessorKey: 'capacity',
+    header: 'Capacity',
+
+    meta: {
+      align: 'right',
+      className: 'w-28',
+      cellClassName: 'font-mono tabular-nums',
+    },
+
+    cell: ({ row }) => formatNumber(row.original.capacity),
+  },
+
+  {
+    accessorKey: 'value',
+    header: 'Value',
+
+    meta: {
+      align: 'right',
+      className: 'w-32',
+      cellClassName: 'font-mono font-medium tabular-nums',
+    },
+
+    cell: ({ row }) => formatNumber(row.original.value),
+  },
+]
 </script>
 
 <template>
-  <div class="min-h-screen">
-    <header class="border-b bg-card">
-      <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-5 sm:px-6">
-        <span
-          aria-hidden="true"
-          class="grid size-10 place-items-center rounded-xl bg-primary font-bold text-primary-foreground"
-        >
-          S
-        </span>
-
-        <div>
-          <p class="font-semibold tracking-tight">SpaceTraders</p>
-          <p class="text-xs text-muted-foreground">Fleet operations</p>
-        </div>
-      </div>
-    </header>
-
-    <main class="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 sm:py-12">
-      <div class="max-w-2xl space-y-3">
-        <p class="text-sm font-semibold text-primary">Interface foundations</p>
-
-        <h1 class="text-3xl font-bold tracking-tight sm:text-4xl">Design system</h1>
-
-        <p class="leading-7 text-muted-foreground">
-          Shared controls and interface states for the SpaceTraders application. The examples below
-          use demonstration data.
+  <main class="min-h-screen bg-background text-foreground">
+    <div class="mx-auto max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
+      <header class="max-w-3xl">
+        <p class="text-xs font-medium uppercase tracking-[0.18em] text-signal">
+          Development reference
         </p>
-      </div>
 
-      <section
-        aria-labelledby="actions-title"
-        class="space-y-6 rounded-xl border bg-card p-5 shadow-sm sm:p-6"
-      >
-        <div>
-          <h2 id="actions-title" class="text-lg font-semibold">Actions</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
-            Visual hierarchy, disabled controls and loading feedback.
-          </p>
-        </div>
+        <h1 class="mt-3 text-3xl font-semibold tracking-tight sm:text-4xl">Design system</h1>
 
-        <div class="flex flex-wrap items-center gap-3">
-          <AppButton>Primary</AppButton>
-          <AppButton variant="secondary">Secondary</AppButton>
-          <AppButton variant="outline">Outline</AppButton>
-          <AppButton variant="ghost">Ghost</AppButton>
-          <AppButton variant="destructive">Destructive</AppButton>
-        </div>
+        <p class="mt-4 max-w-2xl leading-7 text-muted-foreground">
+          Reference for the visual language and shared interface primitives used throughout Space
+          Control.
+        </p>
+      </header>
 
-        <div class="flex flex-wrap items-center gap-3 border-t pt-6">
-          <AppButton disabled>Unavailable</AppButton>
-          <AppButton loading loading-label="Connecting…">Connect</AppButton>
-          <AppButton variant="outline" size="sm">Small action</AppButton>
-        </div>
-      </section>
+      <div class="mt-12 space-y-12">
+        <section aria-labelledby="foundations-title" class="border-t border-border pt-8">
+          <div class="max-w-2xl">
+            <h2 id="foundations-title" class="text-lg font-semibold">Foundations</h2>
 
-      <section
-        aria-labelledby="fields-title"
-        class="space-y-6 rounded-xl border bg-card p-5 shadow-sm sm:p-6"
-      >
-        <div>
-          <h2 id="fields-title" class="text-lg font-semibold">Form fields</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
-            Labels, supporting text and validation feedback.
-          </p>
-        </div>
-
-        <div class="grid gap-6 md:grid-cols-2">
-          <div class="space-y-2">
-            <Label for="agent-name">Agent name</Label>
-            <Input id="agent-name" v-model="agentName" aria-describedby="agent-name-help" />
-            <p id="agent-name-help" class="text-sm text-muted-foreground">
-              A readable identifier for your agent.
+            <p class="mt-1 text-sm leading-6 text-muted-foreground">
+              Core colors and typography used by the application.
             </p>
           </div>
 
-          <div class="space-y-2">
-            <Label for="invalid-token">Agent token — error example</Label>
-            <Input
-              id="invalid-token"
-              type="password"
-              model-value="invalid-example"
-              readonly
-              aria-invalid="true"
-              aria-describedby="token-error"
-              class="border-destructive"
-            />
-            <p id="token-error" class="text-sm text-destructive">
-              This token could not be verified. Check it and try again.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <section
-        aria-labelledby="states-title"
-        class="space-y-6 rounded-xl border bg-card p-5 shadow-sm sm:p-6"
-      >
-        <div class="flex flex-wrap items-end justify-between gap-5">
-          <div>
-            <h2 id="states-title" class="text-lg font-semibold">Data states</h2>
-            <p class="mt-1 text-sm text-muted-foreground">
-              Switch scenarios to inspect the fleet preview.
-            </p>
-          </div>
-
-          <div class="space-y-2">
-            <Label for="scenario">Preview state</Label>
-            <select
-              id="scenario"
-              :value="scenario"
-              class="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-              @change="changeScenario"
-            >
-              <option v-for="item in scenarios" :key="item.value" :value="item.value">
-                {{ item.label }}
-              </option>
-            </select>
-          </div>
-        </div>
-
-        <FeedbackState
-          v-if="scenario === 'loading'"
-          kind="loading"
-          title="Loading fleet"
-          description="Retrieving your ships."
-        />
-
-        <FeedbackState
-          v-else-if="scenario === 'error'"
-          kind="error"
-          title="Unable to load the fleet"
-          description="The service is temporarily unavailable."
-        >
-          <AppButton variant="outline" @click="showSuccess"> Try again </AppButton>
-        </FeedbackState>
-
-        <FeedbackState
-          v-else-if="scenario === 'empty'"
-          kind="empty"
-          title="No ships yet"
-          description="Your agent does not currently own any ships."
-        />
-
-        <div v-else class="space-y-4">
-          <div
-            v-if="scenario === 'refresh-error'"
-            role="alert"
-            class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-warning/30 bg-warning-subtle p-4"
-          >
-            <div>
-              <p class="font-medium text-warning">Refresh failed</p>
-              <p class="mt-1 text-sm text-warning">
-                Previously loaded ships are still displayed. Their information may be outdated.
-              </p>
-            </div>
-
-            <AppButton variant="outline" @click="showSuccess"> Retry refresh </AppButton>
-          </div>
-
-          <p v-if="isRefreshing" role="status" class="text-sm text-muted-foreground">
-            Updating fleet. Previously loaded ships remain visible.
-          </p>
-
-          <div :aria-busy="isRefreshing" class="grid gap-4 md:grid-cols-2">
-            <article
-              v-for="ship in ships"
-              :key="ship.symbol"
-              class="rounded-xl border bg-background p-5"
-            >
-              <div class="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 class="font-semibold">{{ ship.symbol }}</h3>
-                  <p class="mt-1 text-sm text-muted-foreground">
-                    {{ ship.role }}
-                  </p>
-                </div>
-
-                <span
-                  class="rounded-full bg-success-subtle px-2.5 py-1 text-xs font-semibold text-success"
-                >
-                  Docked
+          <ul class="mt-6 grid gap-px border border-border bg-border sm:grid-cols-2 lg:grid-cols-3">
+            <li v-for="token in palette" :key="token.name" class="min-w-0 bg-card">
+              <div
+                class="flex h-16 items-end px-4 py-3"
+                :class="token.className"
+                aria-hidden="true"
+              >
+                <span class="font-mono text-xs">
+                  {{ token.value }}
                 </span>
               </div>
 
-              <dl class="mt-6 grid grid-cols-2 gap-4 text-sm">
-                <div class="col-span-2">
-                  <dt class="text-muted-foreground">Location</dt>
-                  <dd class="mt-1 font-medium">{{ ship.location }}</dd>
-                </div>
+              <div class="p-4">
+                <p class="font-medium">
+                  {{ token.name }}
+                </p>
 
-                <div>
-                  <dt class="text-muted-foreground">Fuel</dt>
-                  <dd class="mt-1 font-medium tabular-nums">{{ ship.fuel }}</dd>
-                </div>
+                <p class="mt-1 text-sm text-muted-foreground">
+                  {{ token.role }}
+                </p>
+              </div>
+            </li>
+          </ul>
 
-                <div>
-                  <dt class="text-muted-foreground">Cargo</dt>
-                  <dd class="mt-1 font-medium tabular-nums">{{ ship.cargo }}</dd>
-                </div>
-              </dl>
+          <div class="mt-6 grid gap-px border border-border bg-border md:grid-cols-2">
+            <div class="bg-card p-5">
+              <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                Interface
+              </p>
+
+              <p class="mt-4 text-2xl font-semibold tracking-tight">IBM Plex Sans</p>
+
+              <p class="mt-2 text-sm leading-6 text-muted-foreground">
+                Headings, labels, actions, navigation and descriptive content.
+              </p>
+            </div>
+
+            <div class="bg-card p-5">
+              <p class="text-xs font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                Technical data
+              </p>
+
+              <p class="mt-4 font-mono text-2xl font-medium">IBM Plex Mono</p>
+
+              <p class="mt-2 font-mono text-sm tabular-nums text-muted-foreground">
+                X1-HZ83-A1 · 125,000 · EXPLORER-1
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="actions-title" class="border-t border-border pt-8">
+          <div class="max-w-2xl">
+            <h2 id="actions-title" class="text-lg font-semibold">Actions</h2>
+
+            <p class="mt-1 text-sm leading-6 text-muted-foreground">
+              Existing AppButton variants, sizes and interaction states.
+            </p>
+          </div>
+
+          <div class="mt-6 flex flex-wrap items-center gap-3">
+            <AppButton>Primary</AppButton>
+            <AppButton variant="secondary"> Secondary </AppButton>
+            <AppButton variant="outline"> Outline </AppButton>
+            <AppButton variant="ghost"> Ghost </AppButton>
+            <AppButton variant="destructive"> Destructive </AppButton>
+          </div>
+
+          <div class="mt-6 flex flex-wrap items-center gap-3 border-t border-border pt-6">
+            <AppButton disabled> Unavailable </AppButton>
+
+            <AppButton loading loading-label="Connecting…"> Connect </AppButton>
+
+            <AppButton variant="outline" size="sm"> Small action </AppButton>
+          </div>
+        </section>
+
+        <section aria-labelledby="inputs-title" class="border-t border-border pt-8">
+          <div class="max-w-2xl">
+            <h2 id="inputs-title" class="text-lg font-semibold">Inputs</h2>
+
+            <p class="mt-1 text-sm leading-6 text-muted-foreground">
+              Labels, supporting text, validation and token visibility.
+            </p>
+          </div>
+
+          <div class="mt-6 grid gap-8 lg:grid-cols-2">
+            <div class="space-y-2">
+              <Label for="design-agent-name"> Agent name </Label>
+
+              <Input
+                id="design-agent-name"
+                v-model="agentName"
+                aria-describedby="design-agent-name-help"
+              />
+
+              <p id="design-agent-name-help" class="text-sm text-muted-foreground">
+                Standard editable field with supporting information.
+              </p>
+            </div>
+
+            <div class="space-y-2">
+              <Label for="design-token"> Agent token </Label>
+
+              <div class="flex items-center gap-2">
+                <Input
+                  id="design-token"
+                  v-model="tokenPreview"
+                  :type="showToken ? 'text' : 'password'"
+                  aria-describedby="design-token-help"
+                  class="min-w-0 flex-1"
+                />
+
+                <AppButton
+                  variant="outline"
+                  :aria-pressed="showToken"
+                  aria-controls="design-token"
+                  :aria-label="showToken ? 'Hide example agent token' : 'Show example agent token'"
+                  @click="showToken = !showToken"
+                >
+                  <EyeOff v-if="showToken" class="size-4" aria-hidden="true" />
+
+                  <Eye v-else class="size-4" aria-hidden="true" />
+
+                  {{ showToken ? 'Hide' : 'Show' }}
+                </AppButton>
+              </div>
+
+              <p id="design-token-help" class="text-sm text-muted-foreground">
+                Same visibility pattern used by the login form.
+              </p>
+            </div>
+
+            <div class="space-y-2">
+              <Label for="design-invalid-token"> Invalid field </Label>
+
+              <Input
+                id="design-invalid-token"
+                type="password"
+                model-value="invalid-example"
+                readonly
+                aria-invalid="true"
+                aria-describedby="design-token-error"
+              />
+
+              <p id="design-token-error" class="text-sm text-destructive">
+                This value could not be verified.
+              </p>
+            </div>
+
+            <div class="space-y-2">
+              <Label for="design-disabled-field"> Disabled field </Label>
+
+              <Input id="design-disabled-field" model-value="Unavailable" disabled />
+
+              <p class="text-sm text-muted-foreground">
+                Disabled controls remain identifiable without becoming visually dominant.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section aria-labelledby="feedback-title" class="border-t border-border pt-8">
+          <div class="max-w-2xl">
+            <h2 id="feedback-title" class="text-lg font-semibold">Feedback</h2>
+
+            <p class="mt-1 text-sm leading-6 text-muted-foreground">
+              Initial states are distinct from secondary refresh states.
+            </p>
+          </div>
+
+          <div class="mt-6 grid gap-5 lg:grid-cols-3">
+            <FeedbackState
+              kind="loading"
+              title="Loading ships"
+              description="Retrieving your ships."
+            />
+
+            <FeedbackState
+              kind="empty"
+              title="No ships yet"
+              description="Your agent does not currently own any ships."
+            />
+
+            <FeedbackState
+              kind="error"
+              title="Unable to load the fleet"
+              description="The service is temporarily unavailable."
+            />
+          </div>
+
+          <div class="mt-6 space-y-4">
+            <div
+              role="alert"
+              class="border border-warning/30 bg-warning-subtle p-4 text-sm text-warning"
+            >
+              <p class="font-medium">Could not refresh ships</p>
+
+              <p class="mt-1">Previously loaded information remains visible and may be outdated.</p>
+            </div>
+
+            <p role="status" class="text-sm text-muted-foreground">Updating your ships…</p>
+          </div>
+        </section>
+
+        <section aria-labelledby="data-display-title" class="border-t border-border pt-8">
+          <div class="max-w-2xl">
+            <h2 id="data-display-title" class="text-lg font-semibold">Data display</h2>
+
+            <p class="mt-1 text-sm leading-6 text-muted-foreground">
+              Shared semantic table rendering with a sticky identity column, technical values and
+              numeric alignment.
+            </p>
+          </div>
+
+          <div class="mt-6">
+            <DataTable
+              :data="demoRows"
+              :columns="demoColumns"
+              aria-label="Design system data table"
+              min-width="52rem"
+            />
+          </div>
+        </section>
+
+        <section aria-labelledby="structured-surfaces-title" class="border-t border-border pt-8">
+          <div class="max-w-2xl">
+            <h2 id="structured-surfaces-title" class="text-lg font-semibold">
+              Structured surfaces
+            </h2>
+
+            <p class="mt-1 text-sm leading-6 text-muted-foreground">
+              Comparable metadata uses structured grids while heterogeneous information keeps
+              independent surfaces.
+            </p>
+          </div>
+
+          <dl class="mt-6 grid gap-px border border-border bg-border sm:grid-cols-3">
+            <div class="min-w-0 bg-card p-4">
+              <dt class="text-xs text-muted-foreground">Type</dt>
+
+              <dd class="mt-1 text-sm font-medium text-orbit">Orbital station</dd>
+            </div>
+
+            <div class="min-w-0 bg-card p-4">
+              <dt class="text-xs text-muted-foreground">Coordinates</dt>
+
+              <dd class="mt-1 font-mono text-sm font-medium tabular-nums">42, -18</dd>
+            </div>
+
+            <div class="min-w-0 bg-card p-4">
+              <dt class="text-xs text-muted-foreground">Marketplace</dt>
+
+              <dd class="mt-1 text-sm font-medium text-signal">Available</dd>
+            </div>
+          </dl>
+
+          <div class="mt-6 grid gap-4 md:grid-cols-2">
+            <article class="border border-signal/40 bg-card p-5">
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <h3 class="font-medium">Marketplace</h3>
+
+                <span class="text-xs font-medium text-signal"> Active trait </span>
+              </div>
+
+              <p class="mt-3 text-sm leading-6 text-muted-foreground">
+                A heterogeneous descriptive item can keep its own surface rather than being forced
+                into a table.
+              </p>
+            </article>
+
+            <article class="border border-warning/30 bg-card p-5">
+              <h3 class="font-medium text-warning">Temporary modifier</h3>
+
+              <p class="mt-3 text-sm leading-6 text-muted-foreground">
+                Warning styling communicates a temporary condition without turning it into a
+                destructive error state.
+              </p>
             </article>
           </div>
-        </div>
-      </section>
-    </main>
-  </div>
+        </section>
+      </div>
+    </div>
+  </main>
 </template>

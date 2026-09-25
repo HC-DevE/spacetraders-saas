@@ -2,31 +2,18 @@
 import { computed } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 
+import { routeNames } from '@/app/router/route-names'
 import { ApiError } from '@/shared/api/api-error'
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
+import { formatLabel } from '@/shared/utils/formatters'
 
 import WaypointOverview from '../components/WaypointOverview.vue'
 import { useWaypointQuery } from '../composables/use-waypoint-query'
 import { hasWaypointTrait } from '../utils/waypoint-status'
-import { routeNames } from '@/app/router/route-names.ts'
 
 const route = useRoute()
 const router = useRouter()
-
-const hasMarketplace = computed(() =>
-  waypoint.value ? hasWaypointTrait(waypoint.value, 'MARKETPLACE') : false,
-)
-
-function openMarket() {
-  return router.push({
-    name: routeNames.market,
-    params: {
-      systemSymbol: systemSymbol.value,
-      waypointSymbol: waypointSymbol.value,
-    },
-  })
-}
 
 const systemSymbol = computed(() =>
   typeof route.params.systemSymbol === 'string' ? route.params.systemSymbol : '',
@@ -45,7 +32,21 @@ const {
   refetch,
 } = useWaypointQuery(systemSymbol, waypointSymbol)
 
+const hasMarketplace = computed(() =>
+  waypoint.value ? hasWaypointTrait(waypoint.value, 'MARKETPLACE') : false,
+)
+
 const isNotFound = computed(() => error.value instanceof ApiError && error.value.status === 404)
+
+function openMarket() {
+  return router.push({
+    name: routeNames.market,
+    params: {
+      systemSymbol: systemSymbol.value,
+      waypointSymbol: waypointSymbol.value,
+    },
+  })
+}
 </script>
 
 <template>
@@ -58,9 +59,9 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
         },
       }"
       aria-label="Back to system"
-      class="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-primary underline-offset-4 hover:underline"
+      class="inline-flex items-center gap-2 rounded-sm text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <span aria-hidden="true">←</span>
+      <span aria-hidden="true"> ← </span>
 
       Back to system
     </RouterLink>
@@ -84,15 +85,23 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
     />
 
     <template v-else-if="waypoint">
-      <header class="flex flex-wrap items-start justify-between gap-4">
+      <header class="flex flex-wrap items-start justify-between gap-5 border-b border-border pb-5">
         <div class="min-w-0">
-          <p class="text-sm font-medium text-muted-foreground">Waypoint details</p>
+          <p class="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+            Waypoint
+          </p>
 
-          <h1 class="mt-1 text-2xl font-semibold tracking-tight">
-            {{ waypoint.symbol }}
-          </h1>
+          <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <h1 class="min-w-0 font-mono text-2xl font-semibold tracking-tight">
+              {{ waypoint.symbol }}
+            </h1>
 
-          <p class="mt-1 text-sm text-muted-foreground">
+            <span class="text-xs font-medium capitalize text-orbit">
+              {{ formatLabel(waypoint.type) }}
+            </span>
+          </div>
+
+          <p class="mt-2 font-mono text-xs text-muted-foreground">
             {{ waypoint.systemSymbol }}
           </p>
         </div>
@@ -100,7 +109,7 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
         <div class="flex flex-wrap items-center gap-2">
           <AppButton
             v-if="hasMarketplace"
-            variant="secondary"
+            size="sm"
             aria-label="Open waypoint market"
             @click="openMarket"
           >
@@ -109,13 +118,14 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
 
           <AppButton
             variant="outline"
+            size="sm"
             aria-label="Refresh waypoint"
             :loading="isFetching"
             :disabled="isPaused"
             loading-label="Refreshing…"
             @click="refetch()"
           >
-            Refresh waypoint
+            Refresh
           </AppButton>
         </div>
       </header>
@@ -123,9 +133,9 @@ const isNotFound = computed(() => error.value instanceof ApiError && error.value
       <div
         v-if="error"
         role="alert"
-        class="rounded-xl border border-warning/30 bg-warning-subtle p-4 text-warning"
+        class="border border-warning/30 bg-warning-subtle p-4 text-warning"
       >
-        <p class="font-semibold">Could not refresh waypoint</p>
+        <p class="font-medium">Could not refresh waypoint</p>
 
         <p class="mt-1 text-sm">
           {{ error.message }}

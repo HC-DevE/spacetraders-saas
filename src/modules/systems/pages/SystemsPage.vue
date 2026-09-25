@@ -1,12 +1,15 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import AppButton from '@/shared/components/AppButton.vue'
 import FeedbackState from '@/shared/components/feedback/FeedbackState.vue'
 import { Label } from '@/shared/components/ui/label'
+import ViewModeToggle from '@/shared/components/view-mode/ViewModeToggle.vue'
+import { type ViewMode, viewModes } from '@/shared/components/view-mode/view-mode'
 
 import SystemCard from '../components/SystemCard.vue'
+import SystemTable from '../components/SystemTable.vue'
 import { useSystemsQuery } from '../composables/use-systems-query'
 import {
   systemsPageSizes,
@@ -20,6 +23,8 @@ const router = useRouter()
 
 const params = computed(() => systemsSearchSchema.parse(route.query))
 
+const viewMode = ref<ViewMode>(viewModes.table)
+
 const {
   data: systems,
   error,
@@ -31,12 +36,15 @@ const {
 } = useSystemsQuery(params)
 
 const totalPages = computed(() => {
-  if (!systems.value) return 1
+  if (!systems.value) {
+    return 1
+  }
 
   return Math.max(1, Math.ceil(systems.value.meta.total / systems.value.meta.limit))
 })
 
 const canGoPrevious = computed(() => params.value.page > 1)
+
 const canGoNext = computed(() => params.value.page < totalPages.value)
 
 async function replacePagination(next: SystemsParams) {
@@ -50,14 +58,18 @@ async function replacePagination(next: SystemsParams) {
 }
 
 async function changePage(nextPage: number) {
-  if (isFetching.value) return
+  if (isFetching.value) {
+    return
+  }
 
   const parsed = systemsParamsSchema.safeParse({
     page: nextPage,
     limit: params.value.limit,
   })
 
-  if (!parsed.success) return
+  if (!parsed.success) {
+    return
+  }
 
   await replacePagination(parsed.data)
 }
@@ -72,7 +84,9 @@ async function changeLimit(event: Event) {
     limit: Number(event.target.value),
   })
 
-  if (!parsed.success) return
+  if (!parsed.success) {
+    return
+  }
 
   await replacePagination(parsed.data)
 }
@@ -80,52 +94,57 @@ async function changeLimit(event: Event) {
 
 <template>
   <section class="space-y-6">
-    <header class="flex flex-wrap items-center justify-between gap-4">
+    <header class="flex flex-wrap items-start justify-between gap-4">
       <div>
-        <p class="text-sm font-medium text-primary">Exploration</p>
+        <h1 class="text-xl font-semibold tracking-tight">Systems</h1>
 
-        <h1 class="mt-2 text-3xl font-bold tracking-tight">Systems</h1>
-
-        <p class="mt-2 text-muted-foreground">
-          Explore known star systems, their coordinates and waypoints.
+        <p class="mt-1 text-sm text-muted-foreground">
+          Explore known star systems, coordinates and waypoints.
         </p>
       </div>
 
       <AppButton
         variant="outline"
+        class="h-8 px-3 text-xs"
         aria-label="Refresh systems"
         :loading="isFetching"
         :disabled="isPaused"
         loading-label="Refreshing…"
         @click="refetch()"
       >
-        Refresh systems
+        Refresh
       </AppButton>
     </header>
 
-    <div class="flex flex-wrap items-center justify-between gap-4">
+    <div class="flex flex-wrap items-center justify-between gap-4 border-y border-border py-3">
       <p class="text-sm text-muted-foreground">
         <template v-if="systems">
-          {{ systems.meta.total }}
-          {{ systems.meta.total === 1 ? 'system' : 'systems' }}
-          known
+          <span class="font-mono tabular-nums text-foreground">
+            {{ systems.meta.total }}
+          </span>
+
+          {{ systems.meta.total === 1 ? ' system known' : ' systems known' }}
         </template>
       </p>
 
-      <div class="flex items-center gap-3">
-        <Label for="systems-limit"> Systems per page </Label>
+      <div class="flex flex-wrap items-center gap-4">
+        <ViewModeToggle v-model="viewMode" />
 
-        <select
-          id="systems-limit"
-          :value="params.limit"
-          :disabled="isFetching"
-          class="h-10 rounded-md border border-input bg-background px-3 text-sm"
-          @change="changeLimit"
-        >
-          <option v-for="size in systemsPageSizes" :key="size" :value="size">
-            {{ size }}
-          </option>
-        </select>
+        <div class="flex items-center gap-3">
+          <Label for="systems-limit" class="text-xs text-muted-foreground"> Per page </Label>
+
+          <select
+            id="systems-limit"
+            :value="params.limit"
+            :disabled="isFetching"
+            class="h-8 border border-input bg-background px-2 font-mono text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            @change="changeLimit"
+          >
+            <option v-for="size in systemsPageSizes" :key="size" :value="size">
+              {{ size }}
+            </option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -144,9 +163,9 @@ async function changeLimit(event: Event) {
       <div
         v-if="error"
         role="alert"
-        class="rounded-lg border border-warning/30 bg-warning-subtle p-4 text-sm text-warning"
+        class="border border-warning/30 bg-warning-subtle p-4 text-sm text-warning"
       >
-        <p class="font-semibold">Could not refresh systems</p>
+        <p class="font-medium">Could not refresh systems</p>
 
         <p class="mt-1">
           {{ error.message }}
@@ -162,7 +181,9 @@ async function changeLimit(event: Event) {
             : `Loading page ${params.page}.`
         }}
 
-        Results from page {{ systems.meta.page }} are still displayed.
+        Results from page
+        {{ systems.meta.page }}
+        are still displayed.
       </p>
 
       <p v-else-if="isPaused" role="status" class="text-sm text-muted-foreground">
@@ -173,14 +194,28 @@ async function changeLimit(event: Event) {
         Updating systems…
       </p>
 
-      <div
-        v-if="systems.data.length"
-        :aria-busy="isFetching"
-        class="grid gap-5 md:grid-cols-2"
-        :class="{ 'opacity-60': isPlaceholderData }"
-      >
-        <SystemCard v-for="system in systems.data" :key="system.symbol" :system="system" />
-      </div>
+      <template v-if="systems.data.length">
+        <SystemTable
+          v-if="viewMode === viewModes.table"
+          :systems="systems.data"
+          :is-fetching="isFetching"
+          :is-placeholder-data="isPlaceholderData"
+        />
+
+        <ul
+          v-else
+          aria-label="System cards"
+          :aria-busy="isFetching ? 'true' : undefined"
+          class="grid gap-4 lg:grid-cols-2"
+          :class="{
+            'opacity-60': isPlaceholderData,
+          }"
+        >
+          <li v-for="system in systems.data" :key="system.symbol" class="min-w-0">
+            <SystemCard :system="system" class="h-full" />
+          </li>
+        </ul>
+      </template>
 
       <FeedbackState
         v-else
@@ -206,10 +241,11 @@ async function changeLimit(event: Event) {
       <nav
         v-if="systems.meta.total > 0"
         aria-label="Systems pagination"
-        class="flex flex-wrap items-center justify-between gap-4 pt-5"
+        class="flex flex-wrap items-center justify-between gap-4 border-t border-border pt-4"
       >
         <AppButton
           variant="outline"
+          size="sm"
           aria-label="Previous systems page"
           :disabled="!canGoPrevious || isFetching || isPlaceholderData"
           @click="changePage(params.page - 1)"
@@ -217,18 +253,24 @@ async function changeLimit(event: Event) {
           Previous
         </AppButton>
 
-        <p class="text-sm text-muted-foreground">
+        <p class="font-mono text-xs text-muted-foreground">
           <template v-if="systems.meta.page <= totalPages">
-            Page {{ systems.meta.page }} of {{ totalPages }}
+            Page
+            {{ systems.meta.page }}
+            /
+            {{ totalPages }}
           </template>
 
           <template v-else>
-            Requested page {{ params.page }} is outside the available range.
+            Requested page
+            {{ params.page }}
+            is outside the available range.
           </template>
         </p>
 
         <AppButton
           variant="outline"
+          size="sm"
           aria-label="Next systems page"
           :disabled="!canGoNext || isFetching || isPlaceholderData"
           @click="changePage(params.page + 1)"

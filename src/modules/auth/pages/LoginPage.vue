@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Eye, EyeOff } from '@lucide/vue'
 import { computed, nextTick, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { z } from 'zod'
@@ -144,9 +145,11 @@ async function submit() {
                 variant="outline"
                 :aria-pressed="showToken"
                 aria-controls="agent-token"
-                aria-label="Show agent token"
+                :aria-label="showToken ? 'Hide agent token' : 'Show agent token'"
                 @click="showToken = !showToken"
               >
+                <EyeOff v-if="showToken" class="size-4" aria-hidden="true" />
+                <Eye v-else class="size-4" aria-hidden="true" />
                 {{ showToken ? 'Hide' : 'Show' }}
               </AppButton>
             </div>
